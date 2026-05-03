@@ -1,9 +1,6 @@
 {
   "profiles": {
-    "WindowsImageDownloader (Package)": {
-      "commandName": "MsixPackage"
-    },
-    "WindowsImageDownloader (Unpackaged)": {
+    "WindowsImageDownloader": {
       "commandName": "Project"
     }
   }

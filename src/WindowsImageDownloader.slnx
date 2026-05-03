@@ -1,13 +1,13 @@
 <Solution>
   <Configurations>
-    <Platform Name="ARM64" />
     <Platform Name="x64" />
-    <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/解决方案项/">
+    <File Path="../doc/roadmap.md" />
+  </Folder>
+  <Project Path="POC/POC.csproj" Id="ed5b7cc9-2cd1-4081-b4ca-ae2747dff117" />
   <Project Path="WindowsImageDownloader/WindowsImageDownloader.csproj">
-    <Platform Solution="*|ARM64" Project="ARM64" />
-    <Platform Solution="*|x64" Project="x64" />
-    <Platform Solution="*|x86" Project="x86" />
+    <Platform Project="x64" />
     <Deploy />
   </Project>
 </Solution>
