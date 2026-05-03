@@ -9,56 +9,49 @@ namespace WindowsImageDownloader.ViewModels;
 
 public sealed partial class SelectionViewModel : ObservableObject
 {
-    private readonly IUpdateCatalogService catalogService;
-    private readonly List<RawFile> allFiles = new();
-    private bool isUpdatingFilters;
-    private bool hasLoadAttempted;
-    private bool isLoading;
-    private string loadingMessage = "正在读取 Windows 产品目录...";
-    private bool hasError;
-    private string errorMessage = string.Empty;
-    private CatalogOption? selectedLanguage;
-    private CatalogOption? selectedArchitecture;
-    private CatalogOption? selectedEditionGroup;
-    private CatalogOption? selectedEdition;
+    private readonly IUpdateCatalogService _catalogService;
+    private readonly List<RawFile> _allFiles = new();
+    private bool _isUpdatingFilters;
+    private bool _hasLoadAttempted;
+    private bool _isLoading;
+    private string _loadingMessage = "正在读取 Windows 产品目录...";
+    private bool _hasError;
+    private string _errorMessage = string.Empty;
+    private CatalogOption? _selectedLanguage;
+    private CatalogOption? _selectedArchitecture;
 
     public SelectionViewModel(IUpdateCatalogService catalogService)
     {
-        this.catalogService = catalogService;
+        this._catalogService = catalogService;
     }
 
     public ObservableCollection<CatalogOption> Languages { get; } = new();
 
     public ObservableCollection<CatalogOption> Architectures { get; } = new();
 
-    public ObservableCollection<CatalogOption> EditionGroups { get; } = new();
+    public ObservableCollection<RawFileGroup> FilteredGroups { get; } = new();
+    public Visibility LoadingVisibility => !_hasLoadAttempted || IsLoading ? Visibility.Visible : Visibility.Collapsed;
 
-    public ObservableCollection<CatalogOption> Editions { get; } = new();
-
-    public ObservableCollection<RawFile> FilteredFiles { get; } = new();
-
-    public Visibility LoadingVisibility => !hasLoadAttempted || IsLoading ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility ContentVisibility => hasLoadAttempted && !IsLoading && !HasError
+    public Visibility ContentVisibility => _hasLoadAttempted && !IsLoading && !HasError
         ? Visibility.Visible
         : Visibility.Collapsed;
 
     public Visibility ErrorVisibility => HasError ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility EmptyVisibility => hasLoadAttempted && !IsLoading && !HasError && allFiles.Count > 0 && FilteredFiles.Count == 0
+    public Visibility EmptyVisibility => _hasLoadAttempted && !IsLoading && !HasError && _allFiles.Count > 0 && FilteredGroups.Count == 0
         ? Visibility.Visible
         : Visibility.Collapsed;
 
-    public string ResultSummary => allFiles.Count == 0
+    public string ResultSummary => _allFiles.Count == 0
         ? "暂无产品目录数据"
-        : $"目录记录 {allFiles.Count:N0} 条，当前显示 {FilteredFiles.Count:N0} 条";
+        : $"目录记录 {_allFiles.Count:N0} 条，当前显示 {FilteredGroups.Count:N0} 个文件";
 
     public bool IsLoading
     {
-        get => isLoading;
+        get => _isLoading;
         private set
         {
-            if (SetProperty(ref isLoading, value))
+            if (SetProperty(ref _isLoading, value))
             {
                 OnPropertyChanged(nameof(LoadingVisibility));
                 OnPropertyChanged(nameof(ContentVisibility));
@@ -69,16 +62,16 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     public string LoadingMessage
     {
-        get => loadingMessage;
-        private set => SetProperty(ref loadingMessage, value);
+        get => _loadingMessage;
+        private set => SetProperty(ref _loadingMessage, value);
     }
 
     public bool HasError
     {
-        get => hasError;
+        get => _hasError;
         private set
         {
-            if (SetProperty(ref hasError, value))
+            if (SetProperty(ref _hasError, value))
             {
                 OnPropertyChanged(nameof(ContentVisibility));
                 OnPropertyChanged(nameof(ErrorVisibility));
@@ -89,16 +82,16 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     public string ErrorMessage
     {
-        get => errorMessage;
-        private set => SetProperty(ref errorMessage, value);
+        get => _errorMessage;
+        private set => SetProperty(ref _errorMessage, value);
     }
 
     public CatalogOption? SelectedLanguage
     {
-        get => selectedLanguage;
+        get => _selectedLanguage;
         set
         {
-            if (SetProperty(ref selectedLanguage, value) && !isUpdatingFilters)
+            if (SetProperty(ref _selectedLanguage, value) && !_isUpdatingFilters)
             {
                 RefreshFilterOptions(FilterChange.Language);
             }
@@ -107,43 +100,19 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     public CatalogOption? SelectedArchitecture
     {
-        get => selectedArchitecture;
+        get => _selectedArchitecture;
         set
         {
-            if (SetProperty(ref selectedArchitecture, value) && !isUpdatingFilters)
+            if (SetProperty(ref _selectedArchitecture, value) && !_isUpdatingFilters)
             {
                 RefreshFilterOptions(FilterChange.Architecture);
             }
         }
     }
 
-    public CatalogOption? SelectedEditionGroup
-    {
-        get => selectedEditionGroup;
-        set
-        {
-            if (SetProperty(ref selectedEditionGroup, value) && !isUpdatingFilters)
-            {
-                RefreshFilterOptions(FilterChange.EditionGroup);
-            }
-        }
-    }
-
-    public CatalogOption? SelectedEdition
-    {
-        get => selectedEdition;
-        set
-        {
-            if (SetProperty(ref selectedEdition, value) && !isUpdatingFilters)
-            {
-                RefreshFilteredFiles();
-            }
-        }
-    }
-
     public Task EnsureCatalogLoadedAsync()
     {
-        return allFiles.Count > 0 || IsLoading
+        return _allFiles.Count > 0 || IsLoading
             ? Task.CompletedTask
             : LoadCatalogAsync(forceRefresh: false);
     }
@@ -168,21 +137,21 @@ public sealed partial class SelectionViewModel : ObservableObject
 
         try
         {
-            var files = await catalogService.GetCatalogAsync(forceRefresh);
-            allFiles.Clear();
-            allFiles.AddRange(files);
+            var files = await _catalogService.GetCatalogAsync(forceRefresh);
+            _allFiles.Clear();
+            _allFiles.AddRange(files);
             InitializeFilters();
         }
         catch (Exception ex)
         {
-            allFiles.Clear();
+            _allFiles.Clear();
             ClearFilters();
             HasError = true;
             ErrorMessage = ex.Message;
         }
         finally
         {
-            hasLoadAttempted = true;
+            _hasLoadAttempted = true;
             IsLoading = false;
             NotifyResultStateChanged();
         }
@@ -190,7 +159,7 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     private void InitializeFilters()
     {
-        isUpdatingFilters = true;
+        _isUpdatingFilters = true;
         try
         {
             ReplaceOptions(Languages, BuildLanguageOptions());
@@ -198,16 +167,10 @@ public sealed partial class SelectionViewModel : ObservableObject
 
             ReplaceOptions(Architectures, BuildArchitectureOptions());
             SelectedArchitecture = Architectures.FirstOrDefault();
-
-            ReplaceOptions(EditionGroups, BuildEditionGroupOptions());
-            SelectedEditionGroup = EditionGroups.FirstOrDefault();
-
-            ReplaceOptions(Editions, BuildEditionOptions());
-            SelectedEdition = Editions.FirstOrDefault();
         }
         finally
         {
-            isUpdatingFilters = false;
+            _isUpdatingFilters = false;
         }
 
         RefreshFilteredFiles();
@@ -215,7 +178,7 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     private void RefreshFilterOptions(FilterChange changedFilter)
     {
-        isUpdatingFilters = true;
+        _isUpdatingFilters = true;
         try
         {
             if (changedFilter <= FilterChange.Language)
@@ -226,25 +189,10 @@ public sealed partial class SelectionViewModel : ObservableObject
                     SelectedArchitecture);
             }
 
-            if (changedFilter <= FilterChange.Architecture)
-            {
-                SelectedEditionGroup = ReplaceOptionsPreservingSelection(
-                    EditionGroups,
-                    BuildEditionGroupOptions(),
-                    SelectedEditionGroup);
             }
-
-            if (changedFilter <= FilterChange.EditionGroup)
-            {
-                SelectedEdition = ReplaceOptionsPreservingSelection(
-                    Editions,
-                    BuildEditionOptions(),
-                    SelectedEdition);
-            }
-        }
         finally
         {
-            isUpdatingFilters = false;
+            _isUpdatingFilters = false;
         }
 
         RefreshFilteredFiles();
@@ -254,7 +202,7 @@ public sealed partial class SelectionViewModel : ObservableObject
     {
         yield return CatalogOption.All("全部语言");
 
-        foreach (var option in allFiles
+        foreach (var option in _allFiles
             .GroupBy(file => file.LanguageCode, StringComparer.OrdinalIgnoreCase)
             .Select(group =>
             {
@@ -274,7 +222,7 @@ public sealed partial class SelectionViewModel : ObservableObject
     {
         yield return CatalogOption.All("全部架构");
 
-        foreach (var architecture in allFiles
+        foreach (var architecture in _allFiles
             .Where(MatchesSelectedLanguage)
             .Select(file => file.Architecture)
             .Where(value => !string.IsNullOrWhiteSpace(value))
@@ -285,50 +233,26 @@ public sealed partial class SelectionViewModel : ObservableObject
         }
     }
 
-    private IEnumerable<CatalogOption> BuildEditionGroupOptions()
-    {
-        yield return CatalogOption.All("全部分组");
-
-        foreach (var group in allFiles
-            .Where(MatchesSelectedLanguage)
-            .Where(MatchesSelectedArchitecture)
-            .Select(file => file.EditionLoc)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Order(StringComparer.OrdinalIgnoreCase))
-        {
-            yield return new CatalogOption(group, DescribeGroup(group));
-        }
-    }
-
-    private IEnumerable<CatalogOption> BuildEditionOptions()
-    {
-        yield return CatalogOption.All("全部版本");
-
-        foreach (var edition in allFiles
-            .Where(MatchesSelectedLanguage)
-            .Where(MatchesSelectedArchitecture)
-            .Where(MatchesSelectedEditionGroup)
-            .Select(file => file.Edition)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Order(StringComparer.OrdinalIgnoreCase))
-        {
-            yield return new CatalogOption(edition, edition);
-        }
-    }
-
     private void RefreshFilteredFiles()
     {
-        FilteredFiles.Clear();
+        FilteredGroups.Clear();
 
-        foreach (var file in allFiles
+        foreach (var group in _allFiles
             .Where(MatchesSelectedLanguage)
             .Where(MatchesSelectedArchitecture)
-            .Where(MatchesSelectedEditionGroup)
-            .Where(MatchesSelectedEdition))
+            .GroupBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                var representative = g.First();
+                var editions = g
+                    .Select(f => f.Edition)
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                return new RawFileGroup(representative, editions);
+            }))
         {
-            FilteredFiles.Add(file);
+            FilteredGroups.Add(group);
         }
 
         NotifyResultStateChanged();
@@ -336,22 +260,18 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     private void ClearFilters()
     {
-        isUpdatingFilters = true;
+        _isUpdatingFilters = true;
         try
         {
             Languages.Clear();
             Architectures.Clear();
-            EditionGroups.Clear();
-            Editions.Clear();
-            FilteredFiles.Clear();
+            FilteredGroups.Clear();
             SelectedLanguage = null;
             SelectedArchitecture = null;
-            SelectedEditionGroup = null;
-            SelectedEdition = null;
         }
         finally
         {
-            isUpdatingFilters = false;
+            _isUpdatingFilters = false;
         }
     }
 
@@ -365,18 +285,6 @@ public sealed partial class SelectionViewModel : ObservableObject
     {
         return IsAll(SelectedArchitecture) ||
             string.Equals(file.Architecture, SelectedArchitecture?.Value, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool MatchesSelectedEditionGroup(RawFile file)
-    {
-        return IsAll(SelectedEditionGroup) ||
-            string.Equals(file.EditionLoc, SelectedEditionGroup?.Value, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool MatchesSelectedEdition(RawFile file)
-    {
-        return IsAll(SelectedEdition) ||
-            string.Equals(file.Edition, SelectedEdition?.Value, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsAll(CatalogOption? option) => option is null || option.IsAll;
@@ -421,8 +329,6 @@ public sealed partial class SelectionViewModel : ObservableObject
     private enum FilterChange
     {
         Language,
-        Architecture,
-        EditionGroup,
-        Edition
+        Architecture
     }
 }

@@ -16,7 +16,7 @@ public sealed record RawFile(
 
     public string LanguageLabel => string.IsNullOrWhiteSpace(Language)
         ? LanguageCode
-        : $"{LanguageCode} / {Language}";
+        : $"{LanguageCode}";
 
     public string EditionGroupLabel => EditionLoc switch
     {
@@ -31,6 +31,15 @@ public sealed record RawFile(
     public string SizeText => FormatSize(Size);
 
     public string RetailText => IsRetailOnly ? "零售版" : "通用";
+
+    public TagType RetailTagType => IsRetailOnly ? TagType.Warning : TagType.Success;
+
+    public TagType ArchTagType => Architecture.ToLowerInvariant() switch
+    {
+        "x64"   => TagType.Success,
+        "arm64" => TagType.Danger,
+        _       => TagType.Default,
+    };
 
     public string Sha256Short => Sha256.Length > 24 ? $"{Sha256[..24]}..." : Sha256;
 

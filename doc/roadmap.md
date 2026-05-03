@@ -2,7 +2,7 @@
 
 ## 📋 概述
 
-本项目基于两个 Shell 脚本（`download-windows-esd.txt` 和 `windows-esd-to-iso.txt`）的功能，计划构建一个功能完整的 **WinUI 3** 桌面应用程序，用于**查询、下载 Windows ESD 映像**，并可选择在下载完成后**自动转换为 WIM 格式或 ISO 安装介质**（支持自由组合输出）。
+本项目基于两个 Shell 脚本（`download-windows-esd.txt` 和 `windows-esd-to-iso.txt`）的功能，构建一个功能完整的 **WinUI 3** 桌面应用程序，用于**查询、下载 Windows ESD 映像**，并可选择在下载完成后**自动转换为 WIM 格式或 ISO 安装介质**（支持自由组合输出）。
 
 ---
 
@@ -65,7 +65,7 @@
 
 本 App 做的就是：**把微软给的快递包（ESD）拆开重组，根据你的需要输出 WIM 零件箱（可挂载编辑）或打包成安装光盘（ISO）**，省去手动敲命令的麻烦。
 
-WIM 格式特别适合**企业批量部署（MDT/SCCM）** 和**DIY 定制系统**的场景——它支持直接挂载编辑，而 ESD 和 ISO 都不行。
+WIM 格式特别适合**企业批量部署（MDT/SCCM）** 和 **DIY 定制系统**的场景——它支持直接挂载编辑，而 ESD 和 ISO 都不行。
 
 ---
 
@@ -162,7 +162,7 @@ WIM 格式特别适合**企业批量部署（MDT/SCCM）** 和**DIY 定制系统
 
 ```
 用户流程：
-  ① 打开 App → ② 浏览目录（选语言 → 选版本 → 选架构）
+  ① 打开 App → ② 浏览目录（选语言 → 选架构）
                ③ 选择输出格式（复选框自由组合）：
                   ☑ ESD 文件（原始下载）
                   ☐ WIM 文件（LZX 重压缩，可挂载编辑）
@@ -188,8 +188,8 @@ WIM 格式特别适合**企业批量部署（MDT/SCCM）** 和**DIY 定制系统
 │  │  内容区域 (Frame)                         │       │
 │  │                                          │       │
 │  │  ┌─ CatalogPage ──────────────────────┐  │       │
-│  │  │ [语言 ▼] [版本 ▼] [架构 ▼]    ↓  │  │       │
-│  │  │   三级联动选择器，筛选可用映像      │  │       │
+│  │  │ [语言 ▼] [架构 ▼]              ↓  │  │       │
+│  │  │   二级联动选择器，筛选可用映像        │  │       │
 │  │  │                                    │  │       │
 │  │  │  文件信息：                         │  │       │
 │  │  │  文件名: Windows11_xxx.esd         │  │       │
@@ -264,125 +264,94 @@ WIM 格式特别适合**企业批量部署（MDT/SCCM）** 和**DIY 定制系统
 
 ```
 WindowsImageDownloader/
-├── App.xaml / App.xaml.cs            # 应用入口
-├── MainWindow.xaml / .cs             # 主窗口
-├── app.manifest                      # 应用清单
-├── Package.appxmanifest              # 模板残留；unpackaged 发布不使用
-├── WindowsImageDownloader.csproj     # 项目文件
+├── App.xaml / App.xaml.cs            # 应用入口 ✅
+├── MainWindow.xaml / .cs             # 主窗口 ✅
+├── app.manifest                      # 应用清单 ✅
+├── WindowsImageDownloader.csproj     # 项目文件 ✅
 │
-├── Models/                           # 数据模型
-│   ├── ProductInfo.cs                # 产品信息
-│   ├── WindowsImage.cs               # Windows 映像（语言/版本/架构）
-│   ├── DownloadTask.cs               # 下载任务（包括目标格式、转换状态）
-│   └── TaskStatus.cs                 # 任务状态枚举
+├── Models/                           # 数据模型 ✅
+│   ├── RawFile.cs                    # ✅ products.xml 原始文件模型
+│   ├── RawFileGroup.cs               # ✅ 文件分组模型
+│   ├── CatalogOption.cs              # ✅ 筛选选项模型
+│   ├── TagType.cs                    # ✅ 标签颜色枚举
+│   ├── WimCompressionKind.cs         # ✅ 压缩类型枚举
+│   ├── WimExportRequest.cs           # ✅ WIM 导出请求
+│   ├── WimImageInfo.cs               # ✅ WIM 映像信息
+│   ├── WimLibraryInfo.cs             # ✅ WIM 库信息
+│   └── WimOperationProgress.cs       # ✅ WIM 操作进度
 │
 ├── Services/                         # 核心服务层
-│   ├── IUpdateCatalogService.cs      # 更新目录服务接口
-│   ├── UpdateCatalogService.cs       # 更新目录服务实现（从 Microsoft 获取 XML）
-│   ├── ICacheService.cs              # 缓存服务接口
-│   ├── CacheService.cs               # 缓存服务实现（SQLite）
-│   ├── IDownloadService.cs           # 下载服务接口
-│   ├── DownloadService.cs            # 下载服务实现（断点续传 + 队列管理）
-│   ├── IWimProcessingService.cs      # WIM 处理服务接口（ManagedWimLib）
-│   ├── WimProcessingService.cs       # WIM 处理服务实现
-│   ├── IIsoCreationService.cs        # ISO 创建服务接口（DiscUtils）
-│   ├── IsoCreationService.cs         # ISO 创建服务实现
-│   ├── ITaskOrchestratorService.cs   # 任务编排服务接口
-│   └── TaskOrchestratorService.cs    # 任务编排：下载→转换流水线
+│   ├── IUpdateCatalogService.cs      # ✅ 更新目录服务接口
+│   ├── UpdateCatalogService.cs       # ✅ 已实现：REST API → CAB → XML → RawFile
+│   ├── IWimProcessingService.cs      # ✅ WIM 处理服务接口
+│   ├── WimProcessingService.cs       # ✅ 已实现：ManagedWimLib 封装
+│   ├── ICacheService.cs              # ❌ 待实现：SQLite 缓存
+│   ├── CacheService.cs               # ❌
+│   ├── IDownloadService.cs           # ❌ 待实现：断点续传下载
+│   ├── DownloadService.cs            # ❌
+│   ├── IIsoCreationService.cs        # ❌ 待实现：DiscUtils ISO 创建
+│   ├── IsoCreationService.cs         # ❌
+│   ├── ITaskOrchestratorService.cs   # ❌ 待实现：下载→转换流水线
+│   └── TaskOrchestratorService.cs    # ❌
 │
-├── ViewModels/                       # ViewModel 层（MVVM）
-│   ├── MainViewModel.cs              # 主 ViewModel
-│   ├── CatalogViewModel.cs           # 目录页 ViewModel
-│   ├── DownloadListViewModel.cs      # 下载任务列表 ViewModel
-│   └── SettingsViewModel.cs          # 设置页 ViewModel
+├── ViewModels/                       # ViewModel 层
+│   ├── SelectionViewModel.cs         # ✅ 已实现：二级联动筛选
+│   ├── DownloadListViewModel.cs      # ❌ 待实现
+│   └── SettingsViewModel.cs          # ❌ 待实现
 │
 ├── Views/                            # UI 页面
 │   ├── Pages/
-│   │   ├── CatalogPage.xaml / .cs    # 产品目录浏览页（选产品 + 选格式 + 添加任务）
-│   │   ├── DownloadListPage.xaml / .cs # 下载任务列表页（含自动转换进度）
-│   │   └── SettingsPage.xaml / .cs   # 设置页
+│   │   ├── SelectionPage.xaml / .cs  # ✅ 已实现：产品目录浏览
+│   │   ├── DownloadListPage          # ❌ 待实现：下载任务列表
+│   │   └── SettingsPage              # ❌ 待实现：设置页
 │   └── Controls/
-│       ├── TaskItemControl.xaml / .cs     # 单个任务卡片（进度、状态、操作按钮）
-│       ├── FormatSelectorControl.xaml / .cs # 输出格式选择器（ESD/WIM/ISO 多选）
-│       └── LogOutputControl.xaml / .cs    # 实时日志输出控件（用于转换过程）
+│       ├── RawFileItemControl        # ✅ 已实现：文件卡片
+│       ├── TagControl                # ✅ 已实现：标签控件
+│       ├── WrapPanel.cs              # ✅ 已实现：自动换行面板
+│       ├── TaskItemControl           # ❌ 待实现：任务进度卡片
+│       ├── FormatSelectorControl     # ❌ 待实现：输出格式选择
+│       └── LogOutputControl          # ❌ 待实现：日志输出
 │
-├── Helpers/                          # 辅助工具
-│   ├── XmlParser.cs                  # Products.xml 解析器
-│   ├── Sha256Helper.cs               # SHA-256 计算工具
-│   ├── FileSizeFormatter.cs          # 文件大小格式化
+├── Helpers/                          # ❌ 待创建
+│   ├── XmlParser.cs                  # ❌ (功能已内联在 UpdateCatalogService)
+│   ├── Sha256Helper.cs               # ❌ (功能已内联在 UpdateCatalogService)
+│   ├── FileSizeFormatter.cs          # ❌ (功能已内联在 RawFile)
 │
-├── Resources/                        # 资源文件与 native 依赖输入
-│   ├── libwim-15.dll                 # wimlib Windows DLL（发布到 exe 同级）
-│   └── Strings/
-│       └── zh-CN/                    # 中文本地化
+├── Resources/                        # ❌ 待创建
+│   ├── libwim-15.dll                 # ❌ 待下载
+│   └── Strings/                      # ❌ 待创建
 │
-└── Assets/                           # 应用资源
-    ├── ...
-    └── MicrosoftRootCA2011.cer       # 微软根证书（用于 HTTPS 验证）
+└── Assets/                           # ✅ 已存在
+    └── ...
 ```
 
 ---
 
 ## 五、开发路线图（按阶段）
 
-### 阶段 1：项目初始化与环境搭建 ⏱ 1-2 天
+### 阶段 1：项目初始化与环境搭建 ⏱ 1-2 天 ✅ **已完成**
 
-- [ ] 1.1 确认开发环境
-  - Visual Studio 2022+ 安装 WinUI 工作负载
-  - Windows App SDK 版本确认（当前项目使用 2.0.1）
-  - .NET 10 环境配置
-- [ ] 1.2 项目结构搭建
-  - 按上述架构创建文件夹和类文件骨架
-  - 安装 NuGet 包依赖
-- [ ] 1.3 基础 MVVM 框架
-  - 集成 CommunityToolkit.Mvvm（`[ObservableProperty]`、`[RelayCommand]` 等源码生成器）
-  - 配置依赖注入（Microsoft.Extensions.DependencyInjection）
-  - 配置 NavigationView 导航框架
-
-**NuGet 依赖：**
-```xml
-<PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
-<PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.*" />
-<PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" />
-<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.*" />
-<PackageReference Include="Discutils" Version="0.*" />
-```
+- [x] 1.1 确认开发环境（WinUI 3 + .NET 10)
+- [x] 1.2 项目结构搭建（创建文件夹和类文件骨架、安装 NuGet 包依赖）
+- [x] 1.3 基础 MVVM 框架（CommunityToolkit.Mvvm、DI、NavigationView 导航）
+- [x] NuGet 依赖已安装：CommunityToolkit.Mvvm, DiscUtils, ManagedWimLib, Microsoft.Data.Sqlite, Microsoft.Extensions.DependencyInjection
 
 ---
 
-### 阶段 2：产品目录浏览功能 ⏱ 3-4 天
+### 阶段 2：产品目录浏览功能 ⏱ 3-4 天 ✅ **已完成**
 
-- [ ] 2.1 `UpdateCatalogService` 实现
-  - 分析 `download-windows-esd.txt` 中的 REST API 调用逻辑
-  - 用 `HttpClient` 调用 Windows Update 服务：`POST https://fe3.delivery.mp.microsoft.com/UpdateMetadataService/updates/search/v1/bydeviceinfo`
+- [x] 2.1 `UpdateCatalogService` 实现
+  - Windows Update REST API：POST `https://fe3.delivery.mp.microsoft.com/UpdateMetadataService/updates/search/v1/bydeviceinfo`
   - 请求体：`{"Products": "PN=Windows.Products.Cab.amd64&V=26100.0.0.0", "DeviceAttributes": "DUScan=1;OSVersion=10.0.026100.1"}`
   - 响应解析：从 JSON 中提取 `FileLocations[0].Url` 和 `FileLocations[0].Digest`
-- [ ] 2.2 下载 products.cab
-  - 支持 `If-Modified-Since` 条件请求（对应 `--time-cond`）
-  - 下载后校验 SHA-256（Base64 编码比较）
-  - 使用 `System.IO.Compression` 解压 CAB 中的 `products.xml`
-- [ ] 2.3 证书处理
-  - 将 Microsoft Root CA 2011 证书嵌入应用资源
-  - 配置 `HttpClientHandler.ServerCertificateCustomValidationCallback` 或导入受信任根证书
-- [ ] 2.4 `CacheService` 实现
-  - 基于 SQLite 缓存 products.xml 解析结果
-  - 缓存策略：24 小时内不过期（对应 `-mmin -1440`）
-  - 缓存版本管理
-- [ ] 2.5 Products.xml 解析器
-  - 使用 `XDocument` / `XPath` 解析 products.xml
-  - 提取：`LanguageCode`、`Edition`、`Architecture`、`FileName`、`FilePath`、`Sha256`
-- [ ] 2.6 `CatalogPage` UI 实现
-  - 三级联动选择器：语言 → 版本 → 架构
-  - 显示文件信息（文件名、大小、SHA-256、下载链接）
-  - **输出格式选择器（多选复选框）**：
-    - ☑ ESD 文件（原始下载）
-    - ☐ WIM 文件（LZX 重压缩，可挂载编辑）
-    - ☐ ISO 镜像（可启动安装盘）
-  - "[添加下载任务]" 按钮
+- [x] 2.2 下载 products.cab + SHA-256 校验 + expand.exe 解压
+- [x] 2.3 Products.xml 解析器（LINQ to XML 解析 RawFile 列表）
+- [x] 2.4 SelectionViewModel + SelectionPage UI（语言/架构二级联动、文件卡片列表）
+- [x] 2.5 自定义控件：TagControl（6色标签）、WrapPanel（自动换行）、RawFileItemControl（文件卡片含下载按钮）
 
 ---
 
-### 阶段 3：下载 + 自动转换一站式流水线 ⏱ 8-10 天
+### 阶段 3：下载 + 自动转换一站式流水线 ⏱ 待实现 ← **从这里开始**
 
 这是最核心的阶段——将 Shell 脚本中的下载和转换整合为一条无缝流水线。
 
@@ -403,34 +372,23 @@ WindowsImageDownloader/
 
 #### 3.2 WIM 处理引擎（ManagedWimLib + wimlib）
 
-- [x] 3.2.1 ManagedWimLib 集成
-  - 添加 `ManagedWimLib` NuGet 包
-  - 使用 `Resources/libwim-15.dll` 作为 custom native binary，并发布到 exe 同级
-  - 封装为 `IWimProcessingService` / `WimProcessingService`，UI 不直接依赖 ManagedWimLib 类型
-- [ ] 3.2.2 实现 WIM 操作核心方法
-  - `GetImagesAsync(esdPath)` → 获取映像数量和映像信息（对应 `wiminfo --header`）
-  - `ExtractImageAsync(esdPath, index, destDir)` → 解压映像到目录（对应 `wimapply`）
-  - `ExportImageAsync(request)` → 导出映像（对应 `wimexport`）
-  - 支持两种压缩算法：
-    - `WimCompression.LZMS` → 输出 ESD 格式（固态归档 + 高压缩）
-    - `WimCompression.LZX` → 输出 WIM 格式（标准压缩，可挂载编辑）
-- [ ] 3.2.3 临时目录管理
-  - 使用 `System.IO.Path.GetTempPath()` 创建临时工作目录
-  - 安全清理机制（对应 Shell 的 `trap cleanup EXIT`）
-  - 提供保留临时文件选项（对应 `NO_CLEANUP`，用于调试）
+- [x] 3.2.1 ManagedWimLib 集成 ✅
+- [ ] 3.2.2 ESD → WIM / ESD → ISO 完整转换流程集成
+  - 临时目录管理（创建/清理临时工作目录）
+  - 映像解压到目录（对应 `wimapply`）
+  - boot.wim 创建（LZX 压缩 + 可启动标志）
+  - install.wim/esd 导出（可配置 LZMS/LZX 压缩）
+- [ ] 3.2.3 准备 libwim-15.dll 运行时文件
 
 #### 3.3 ISO 创建引擎（DiscUtils）
 
-- [ ] 3.3.1 DiscUtils 集成与封装
+- [ ] 3.3.1 `IsoCreationService` 实现
   - 使用 `DiscUtils.Iso9660.CDBuilder` 创建 ISO
   - **无需任何外部工具，纯 .NET 代码**
 - [ ] 3.3.2 实现 ISO 创建核心方法
   - `CreateBootableIso(sourceDir, outputPath, volumeName)` → 创建 UEFI 可启动 ISO
   - 设置 El Torito EFI 启动入口（指向 `efi/microsoft/boot/efisys.bin`）
   - 设置 ISO 9660 卷标 + UDF 桥接卷标
-- [ ] 3.3.3 进度报告
-  - 转换阶段分步进度（解压中 / 导出 boot.wim / 导出 install.esd/wim / 打包 ISO）
-  - 整体 ETA 估算
 
 #### 3.4 任务编排引擎
 
@@ -441,31 +399,21 @@ WindowsImageDownloader/
     - ESD + WIM → 下载完成 + 校验通过 → 用 LZX 重压缩为 WIM → 完成
     - ESD + ISO → 下载完成 + 校验通过 → 用 DiscUtils 生成 ISO → 完成
     - ESD + WIM + ISO → 三步走：保留 ESD → 转 WIM → 用 WIM 制作 ISO → 全部完成
-- [ ] 3.4.2 状态持久化
-  - 应用关闭后恢复任务状态
-  - 断点续传 + 转换断点（如果某格式已生成则跳过）
+- [ ] 3.4.2 下载任务模型（DownloadTask、OutputFormat 枚举等）
 
 #### 3.5 任务列表 UI
 
 - [ ] 3.5.1 `DownloadListPage` UI 实现
-  - 每个任务一张卡片，显示：
-    - 标题：Windows 11 Pro zh-cn amd64
-    - 输出格式标识：📦 ESD  / 📁 WIM / 💿 ISO / 组合（如 📦📁💿）
-    - 多格式转换时显示子任务进度（如 "WIM: 60% | ISO: 40%"）
-    - 进度条 + 百分比 + 速度/ETA
-    - 状态文字：下载中 / 校验中 / 转换中 / 已完成 / 失败
-    - 操作按钮：暂停/恢复/取消/打开文件夹/重试
-  - 排序：按添加时间倒序
-  - 工具栏：清除已完成、清除全部（带确认）
+  - 每个任务一张卡片，显示进度、速度/ETA、状态文字、操作按钮
+  - 多格式转换时显示子任务进度
+  - 排序、清除已完成/全部
+- [ ] 3.5.2 导航菜单添加"下载任务"入口
 
 ---
 
 ### 阶段 4：用户界面完善 ⏱ 2-3 天
 
-- [ ] 4.1 主题与样式
-  - 支持浅色/深色主题（WinUI 3 原生支持）
-  - 自定义控件样式
-  - 图标与视觉资产
+- [ ] 4.1 主题与样式（浅色/深色主题、自定义控件样式）
 - [ ] 4.2 设置页面
   - 下载目录设置
   - 临时目录设置
@@ -474,51 +422,58 @@ WindowsImageDownloader/
   - 代理设置
   - 缓存清理按钮
   - 语言选择（中文/English）
-- [ ] 4.3 任务历史
-  - 已完成任务列表（含结果信息）
-  - 清除历史功能
-- [ ] 4.4 错误处理与用户体验
-  - 全局异常处理
-  - 网络错误自动重试（可配置重试次数）
-  - 友好的错误提示而非终端报错
-  - 操作确认对话框（取消下载/删除文件）
-  - 系统托盘 + 下载完成通知（Toast）
-- [ ] 4.5 本地化
-  - 支持中英文界面
-  - 使用 `.resw` 资源文件
+- [ ] 4.3 任务历史（已完成任务列表 + 清除历史功能）
+- [ ] 4.4 错误处理与用户体验（全局异常、网络重试、操作确认对话框、通知）
+- [ ] 4.5 本地化（中英文界面，`.resw` 资源文件）
 
 ---
 
 ### 阶段 5：测试与发布 ⏱ 2-3 天
 
-- [ ] 5.1 单元测试
-  - Services 层单元测试
-  - XML 解析测试
-  - SHA-256 校验测试
-  - WIM 导出测试（ESD→WIM 重压缩）
-  - DiscUtils ISO 创建测试
-- [ ] 5.2 集成测试
-  - 完整工作流测试：选产品 → 下载 → 自动转换 → 输出三种格式
-  - 断点续传测试（中断网络再恢复）
-  - 取消任务测试
-  - 应用重启后任务恢复测试
-  - WIM 可挂载性验证（输出 .wim 能否被 `dism /Mount-Wim` 挂载）
-- [ ] 5.3 Unpackaged 发布
-  - 使用文件系统发布目录，不生成 MSIX
-  - 保持 `WindowsPackageType=None`，不启用 AOT、trim 或单文件发布
-  - 确认 `libwim-15.dll` 和 Windows App SDK self-contained 文件随发布目录输出
-  - 应用签名（可选，但推荐用于减少 SmartScreen 提示）
-- [ ] 5.4 发布
-  - GitHub Releases 发布
-  - unpackaged ZIP/安装器发布形式
-  - 安装说明文档
-  - 用户指南
+- [ ] 5.1 单元测试（Services 层、XML 解析、SHA-256 校验、DiscUtils ISO 创建）
+- [ ] 5.2 集成测试（完整工作流：选产品 → 下载 → 自动转换 → 输出三种格式）
+- [ ] 5.3 Unpackaged 发布（确认 libwim-15.dll 输出、应用签名）
+- [ ] 5.4 GitHub Releases 发布
 
 ---
 
-## 六、关键实现细节
+## 六、当前完成状态
 
-### 6.1 Windows Update REST API 调用
+### ✅ 已实现（可直接运行的代码）
+
+| 组件 | 状态 | 说明 |
+|------|------|------|
+| `UpdateCatalogService` | ✅ 完整实现 | Windows Update REST API → CAB下载 → SHA-256校验 → expand.exe解压 → XML解析 |
+| `WimProcessingService` | ✅ 完整实现 | ManagedWimLib 封装：GetImages / ExtractImage / ExportImage + 进度回调 |
+| `SelectionViewModel` | ✅ 完整实现 | 语言→架构二级联动筛选，加载/错误/空状态处理 |
+| `SelectionPage` UI | ✅ 完整实现 | 产品目录浏览页：ComboBox筛选 + ListView卡片列表 |
+| `RawFileItemControl` | ✅ 完整实现 | 文件卡片：标题/Tag/Editions列表/下载按钮 |
+| `TagControl` | ✅ 完整实现 | 6色标签控件（Primary/Success/Warning/Danger/Info/Default） |
+| `WrapPanel` | ✅ 完整实现 | 自动换行面板（HorizontalSpacing/VerticalSpacing） |
+| 全部 Model | ✅ 已创建 | 10个模型/枚举文件 |
+
+### ❌ 尚未实现（接下来的开发重点）
+
+| 组件 | 优先级 | 说明 |
+|------|--------|------|
+| 下载服务 | 🔴 P0 | `IDownloadService` / `DownloadService` — 断点续传下载 |
+| ISO 创建服务 | 🔴 P0 | `IIsoCreationService` / `IsoCreationService` — DiscUtils 封装 |
+| 任务编排服务 | 🔴 P0 | `ITaskOrchestratorService` / `TaskOrchestratorService` — 完整流水线 |
+| 下载任务模型 | 🔴 P0 | `DownloadTask`, `OutputFormat` flags, `TaskState` 枚举 |
+| 下载列表页 | 🔴 P0 | `DownloadListPage` + `DownloadListViewModel` |
+| 任务卡片控件 | 🟡 P1 | `TaskItemControl` — 进度/状态/操作 |
+| 格式选择控件 | 🟡 P1 | `FormatSelectorControl` — ESD/WIM/ISO 多选 |
+| SQLite 缓存服务 | 🟡 P1 | `CacheService` — 结构化缓存 |
+| 设置页面 | 🟢 P2 | `SettingsPage` + `SettingsViewModel` |
+| 导航整合 | 🟢 P2 | 添加下载任务/设置菜单项到 NavigationView |
+| libwim-15.dll | 🟢 P2 | 下载 wimlib 二进制包，提取 DLL |
+| 本地化 | 🟢 P2 | .resw 中英文资源文件 |
+
+---
+
+## 七、关键实现细节
+
+### 7.1 Windows Update REST API 调用
 
 ```csharp
 var requestBody = new
@@ -536,7 +491,7 @@ var cabUrl = result[0].FileLocations[0].Url;
 var expectedDigest = result[0].FileLocations[0].Digest; // Base64 SHA-256
 ```
 
-### 6.2 断点续传下载
+### 7.2 断点续传下载
 
 ```csharp
 public async Task DownloadWithResumeAsync(
@@ -574,38 +529,11 @@ public async Task DownloadWithResumeAsync(
 }
 ```
 
-### 6.3 products.xml 解析
+### 7.3 products.xml 解析（当前已实现）
 
-```csharp
-XDocument doc = XDocument.Parse(xmlContent);
-XNamespace ns = doc.Root.GetDefaultNamespace();
+详见 `UpdateCatalogService.ParseProductsXml()` — 使用 LINQ to XML 解析 `LanguageCode`, `Language`, `Architecture`, `Edition_Loc`, `Edition`, `FileName`, `FilePath`, `Sha256`, `Size`, `IsRetailOnly`。
 
-// 查询所有语言
-var languages = doc.Descendants(ns + "LanguageCode")
-    .Select(x => x.Value)
-    .Distinct()
-    .OrderBy(x => x);
-
-// 查询指定语言+版本的架构
-var architectures = doc.Descendants(ns + "File")
-    .Where(f => f.Element(ns + "LanguageCode")?.Value == language
-             && f.Element(ns + "Edition")?.Value == edition)
-    .Elements(ns + "Architecture")
-    .Select(x => x.Value)
-    .Distinct()
-    .OrderBy(x => x);
-
-// 获取文件信息
-var fileInfo = doc.Descendants(ns + "File")
-    .FirstOrDefault(f => f.Element(ns + "LanguageCode")?.Value == language
-                      && f.Element(ns + "Edition")?.Value == edition
-                      && f.Element(ns + "Architecture")?.Value == architecture);
-var fileName = fileInfo?.Element(ns + "FileName")?.Value;
-var fileUrl = fileInfo?.Element(ns + "FilePath")?.Value;
-var sha256 = fileInfo?.Element(ns + "Sha256")?.Value;
-```
-
-### 6.4 ESD → WIM 转换（wimlib LZX 重压缩）
+### 7.4 ESD → WIM 转换（wimlib LZX 重压缩）
 
 WIM 输出本质上就是把 ESD 的 LZMS 压缩解压后用 LZX 重新打包——wimlib 一个 `ExportImage` 调用即可完成。
 
@@ -646,7 +574,7 @@ public async Task ConvertEsdToWimAsync(
 }
 ```
 
-### 6.5 ESD → ISO 转换核心逻辑（wimlib + DiscUtils）
+### 7.5 ESD → ISO 转换核心逻辑（wimlib + DiscUtils）
 
 ```csharp
 public async Task ConvertEsdToIsoAsync(
@@ -680,7 +608,6 @@ public async Task ConvertEsdToIsoAsync(
           cancellationToken: ct);
 
         // 导出映像 4+ → install.esd (LZMS, 128K)
-        // 如果同时也要求输出 WIM，此处也可改为 LZX 输出 install.wim
         var installEsd = Path.Combine(tempDir, "sources", "install.esd");
         for (int i = 4; i <= images.Count; i++)
         {
@@ -719,7 +646,7 @@ public async Task ConvertEsdToIsoAsync(
 }
 ```
 
-### 6.6 任务模型（支持多格式输出）
+### 7.6 任务模型（支持多格式输出）
 
 ```csharp
 [Flags]
@@ -755,7 +682,7 @@ public enum TaskState { Waiting, Downloading, Verifying, Converting, Completed, 
 
 ---
 
-## 七、风险与挑战
+## 八、风险与挑战
 
 | 风险 | 影响 | 缓解策略 |
 |-----|------|---------|
@@ -769,18 +696,17 @@ public enum TaskState { Waiting, Downloading, Verifying, Converting, Completed, 
 
 ---
 
-## 八、总结
+## 九、总结
 
 本路线图将 WindowsImageDownloader 的开发分为 **5 个阶段**：
 
-| 阶段 | 内容 | 工期 |
-|-----|------|------|
-| 1. 项目初始化 | 搭建骨架、依赖、MVVM 框架 | 1-2 天 |
-| 2. 产品目录浏览 | 从微软获取产品列表，三级联动选择 | 3-4 天 |
-| 3. 下载+转换流水线 | **核心功能**：断点续传下载 + wimlib WIM/ESD 处理 + DiscUtils ISO 创建 + 多格式输出编排 | 8-10 天 |
-| 4. UI 完善 | 主题、设置、本地化、错误处理 | 2-3 天 |
-| 5. 测试与发布 | 单元/集成测试、unpackaged 发布 | 2-3 天 |
-| **总计** | | **16-22 天** |
+| 阶段 | 内容 | 工期 | 状态 |
+|-----|------|------|------|
+| 1. 项目初始化 | 搭建骨架、依赖、MVVM 框架 | 1-2 天 | ✅ **已完成** |
+| 2. 产品目录浏览 | 从微软获取产品列表，二级联动选择 | 3-4 天 | ✅ **已完成** |
+| 3. 下载+转换流水线 | **核心功能**：断点续传下载 + wimlib WIM/ESD 处理 + DiscUtils ISO 创建 + 多格式输出编排 | 8-10 天 | 🔴 **待实现** |
+| 4. UI 完善 | 主题、设置、本地化、错误处理 | 2-3 天 | ⏳ 待实现 |
+| 5. 测试与发布 | 单元/集成测试、unpackaged 发布 | 2-3 天 | ⏳ 待实现 |
 
 ### 关键设计决策
 

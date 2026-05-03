@@ -13,18 +13,18 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
     private const string UpdateServiceUrl =
         "https://fe3.delivery.mp.microsoft.com/UpdateMetadataService/updates/search/v1/bydeviceinfo";
 
-    private readonly HttpClient httpClient;
-    private readonly string cacheDirectory;
+    private readonly HttpClient _httpClient;
+    private readonly string _cacheDirectory;
 
     public UpdateCatalogService()
     {
-        httpClient = new HttpClient
+        _httpClient = new HttpClient
         {
             Timeout = TimeSpan.FromMinutes(5)
         };
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("WindowsImageDownloader/0.1");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("WindowsImageDownloader/0.1");
 
-        cacheDirectory = Path.Combine(
+        _cacheDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "WindowsImageDownloader",
             "catalog_cache");
@@ -34,10 +34,10 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
         bool forceRefresh = false,
         CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(cacheDirectory);
+        Directory.CreateDirectory(_cacheDirectory);
 
-        var cabPath = Path.Combine(cacheDirectory, "products.cab");
-        var xmlPath = Path.Combine(cacheDirectory, "products.xml");
+        var cabPath = Path.Combine(_cacheDirectory, "products.cab");
+        var xmlPath = Path.Combine(_cacheDirectory, "products.xml");
 
         try
         {
@@ -76,7 +76,7 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
             Encoding.UTF8,
             "application/json");
 
-        using var response = await httpClient.PostAsync(UpdateServiceUrl, jsonContent, cancellationToken);
+        using var response = await _httpClient.PostAsync(UpdateServiceUrl, jsonContent, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -121,7 +121,7 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
             File.Delete(tempPath);
         }
 
-        using var response = await httpClient.GetAsync(
+        using var response = await _httpClient.GetAsync(
             url,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
@@ -178,9 +178,9 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
             RedirectStandardOutput = true,
             UseShellExecute = false
         };
+        processStartInfo.ArgumentList.Add("/F:products.xml");
         processStartInfo.ArgumentList.Add(cabPath);
-        processStartInfo.ArgumentList.Add("-F:products.xml");
-        processStartInfo.ArgumentList.Add(outputDirectory);
+        processStartInfo.ArgumentList.Add(outputPath);
 
         using var process = Process.Start(processStartInfo)
             ?? throw new InvalidOperationException("无法启动 expand.exe。");
@@ -190,16 +190,19 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
 
         await process.WaitForExitAsync(cancellationToken);
 
+        var stdOut = await outputTask;
+        var stdErr = await errorTask;
+
         if (process.ExitCode != 0)
         {
-            var output = await outputTask;
-            var error = await errorTask;
-            throw new InvalidOperationException($"expand.exe 解压失败。{output}{error}");
+            throw new InvalidOperationException($"expand.exe 解压失败（退出码 {process.ExitCode}）。{stdOut}{stdErr}");
         }
 
         if (!File.Exists(outputPath))
         {
-            throw new FileNotFoundException("expand.exe 未生成 products.xml。", outputPath);
+            throw new FileNotFoundException(
+                $"expand.exe 未生成 products.xml（退出码 {process.ExitCode}）。stdout: {stdOut} stderr: {stdErr}",
+                outputPath);
         }
     }
 

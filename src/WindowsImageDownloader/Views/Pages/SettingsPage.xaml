@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="WindowsImageDownloader.Views.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ctk="using:CommunityToolkit.WinUI.Controls"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24,16">
+        <StackPanel Spacing="4" MaxWidth="900" HorizontalAlignment="Left">
+
+            <!-- ── 下载设置 ─────────────────────────────────────────────────── -->
+            <TextBlock
+                Text="下载"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Margin="0,0,0,12" />
+
+            <!-- 下载目录 -->
+            <ctk:SettingsCard Header="下载目录" Description="ESD 文件与转换输出的保存位置">
+                <ctk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE838;" />
+                </ctk:SettingsCard.HeaderIcon>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBox
+                        Text="{x:Bind ViewModel.DownloadDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        PlaceholderText="默认下载文件夹"
+                        MinWidth="320"
+                        IsReadOnly="False" />
+                    <Button
+                        Content="浏览…"
+                        Command="{x:Bind ViewModel.BrowseDownloadDirectoryCommand}" />
+                </StackPanel>
+            </ctk:SettingsCard>
+
+            <!-- 下载分片数 -->
+            <ctk:SettingsCard
+                Header="下载分片数"
+                Description="将单个下载任务拆分为多少个并行块（1–32）">
+                <ctk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE9F5;" />
+                </ctk:SettingsCard.HeaderIcon>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Slider
+                        x:Name="chunkSlider"
+                        Minimum="1" Maximum="32" StepFrequency="1"
+                        TickFrequency="8" TickPlacement="Outside"
+                        Value="{x:Bind ViewModel.DownloadChunkCount, Mode=TwoWay}"
+                        Width="240" />
+                    <TextBlock
+                        VerticalAlignment="Center" MinWidth="28"
+                        Text="{x:Bind chunkSlider.Value, Mode=OneWay}" />
+                </StackPanel>
+            </ctk:SettingsCard>
+
+            <!-- 最大并发下载数 -->
+            <ctk:SettingsCard
+                Header="最大并发下载数"
+                Description="同时运行的下载任务数量上限（1–16）">
+                <ctk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE896;" />
+                </ctk:SettingsCard.HeaderIcon>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Slider
+                        x:Name="concurrentSlider"
+                        Minimum="1" Maximum="16" StepFrequency="1"
+                        TickFrequency="4" TickPlacement="Outside"
+                        Value="{x:Bind ViewModel.MaxConcurrentDownloads, Mode=TwoWay}"
+                        Width="240" />
+                    <TextBlock
+                        VerticalAlignment="Center" MinWidth="28"
+                        Text="{x:Bind concurrentSlider.Value, Mode=OneWay}" />
+                </StackPanel>
+            </ctk:SettingsCard>
+
+            <!-- ── 界面 ─────────────────────────────────────────────────────── -->
+            <TextBlock
+                Text="界面"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Margin="0,16,0,12" />
+
+            <!-- 语言 -->
+            <ctk:SettingsCard
+                Header="语言"
+                Description="{x:Bind ViewModel.SelectedLanguageHint, Mode=OneWay}">
+                <ctk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE757;" />
+                </ctk:SettingsCard.HeaderIcon>
+                <ComboBox
+                    x:Name="languageComboBox"
+                    SelectedIndex="{x:Bind ViewModel.SelectedLanguageIndex, Mode=TwoWay}"
+                    MinWidth="160">
+                    <ComboBoxItem Content="跟随系统" Tag="" />
+                    <ComboBoxItem Content="English" Tag="en-US" />
+                    <ComboBoxItem Content="中文（简体）" Tag="zh-CN" />
+                    <ComboBoxItem Content="日本語" Tag="ja-JP" />
+                    <ComboBoxItem Content="Français" Tag="fr-FR" />
+                    <ComboBoxItem Content="Español" Tag="es-ES" />
+                    <ComboBoxItem Content="한국어" Tag="ko-KR" />
+                </ComboBox>
+            </ctk:SettingsCard>
+
+            <!-- ── 重置 ─────────────────────────────────────────────────────── -->
+            <TextBlock
+                Text="高级"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Margin="0,16,0,12" />
+
+            <ctk:SettingsCard Header="重置为默认值" Description="将所有设置恢复为出厂默认值">
+                <ctk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE777;" />
+                </ctk:SettingsCard.HeaderIcon>
+                <Button
+                    Content="重置"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Command="{x:Bind ViewModel.ResetCommand}" />
+            </ctk:SettingsCard>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="WindowsImageDownloader.Views.Controls.TagControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="Root"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <!-- Default palette (gray) -->
+        <SolidColorBrush x:Key="TagDefaultBackground" Color="#1A808080" />
+        <SolidColorBrush x:Key="TagDefaultBorder"     Color="#40808080" />
+        <SolidColorBrush x:Key="TagDefaultForeground" Color="#808080" />
+
+        <!-- Primary (blue) -->
+        <SolidColorBrush x:Key="TagPrimaryBackground" Color="#1A0078D4" />
+        <SolidColorBrush x:Key="TagPrimaryBorder"     Color="#400078D4" />
+        <SolidColorBrush x:Key="TagPrimaryForeground" Color="#0078D4" />
+
+        <!-- Success (green) -->
+        <SolidColorBrush x:Key="TagSuccessBackground" Color="#1A107C10" />
+        <SolidColorBrush x:Key="TagSuccessBorder"     Color="#40107C10" />
+        <SolidColorBrush x:Key="TagSuccessForeground" Color="#107C10" />
+
+        <!-- Warning (orange) -->
+        <SolidColorBrush x:Key="TagWarningBackground" Color="#1ACA5010" />
+        <SolidColorBrush x:Key="TagWarningBorder"     Color="#40CA5010" />
+        <SolidColorBrush x:Key="TagWarningForeground" Color="#CA5010" />
+
+        <!-- Danger (red) -->
+        <SolidColorBrush x:Key="TagDangerBackground" Color="#1AE81123" />
+        <SolidColorBrush x:Key="TagDangerBorder"     Color="#40E81123" />
+        <SolidColorBrush x:Key="TagDangerForeground" Color="#E81123" />
+
+        <!-- Info (light blue) -->
+        <SolidColorBrush x:Key="TagInfoBackground" Color="#1A00B7C3" />
+        <SolidColorBrush x:Key="TagInfoBorder"     Color="#4000B7C3" />
+        <SolidColorBrush x:Key="TagInfoForeground" Color="#00B7C3" />
+    </UserControl.Resources>
+
+    <Border
+        x:Name="TagBorder"
+        Padding="8,3"
+        Background="{StaticResource TagDefaultBackground}"
+        BorderBrush="{StaticResource TagDefaultBorder}"
+        BorderThickness="1"
+        CornerRadius="4">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="TypeStates">
+                <VisualState x:Name="DefaultState" />
+                <VisualState x:Name="PrimaryState">
+                    <VisualState.Setters>
+                        <Setter Target="TagBorder.Background" Value="{StaticResource TagPrimaryBackground}" />
+                        <Setter Target="TagBorder.BorderBrush" Value="{StaticResource TagPrimaryBorder}" />
+                        <Setter Target="TagText.Foreground" Value="{StaticResource TagPrimaryForeground}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="SuccessState">
+                    <VisualState.Setters>
+                        <Setter Target="TagBorder.Background" Value="{StaticResource TagSuccessBackground}" />
+                        <Setter Target="TagBorder.BorderBrush" Value="{StaticResource TagSuccessBorder}" />
+                        <Setter Target="TagText.Foreground" Value="{StaticResource TagSuccessForeground}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WarningState">
+                    <VisualState.Setters>
+                        <Setter Target="TagBorder.Background" Value="{StaticResource TagWarningBackground}" />
+                        <Setter Target="TagBorder.BorderBrush" Value="{StaticResource TagWarningBorder}" />
+                        <Setter Target="TagText.Foreground" Value="{StaticResource TagWarningForeground}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="DangerState">
+                    <VisualState.Setters>
+                        <Setter Target="TagBorder.Background" Value="{StaticResource TagDangerBackground}" />
+                        <Setter Target="TagBorder.BorderBrush" Value="{StaticResource TagDangerBorder}" />
+                        <Setter Target="TagText.Foreground" Value="{StaticResource TagDangerForeground}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="InfoState">
+                    <VisualState.Setters>
+                        <Setter Target="TagBorder.Background" Value="{StaticResource TagInfoBackground}" />
+                        <Setter Target="TagBorder.BorderBrush" Value="{StaticResource TagInfoBorder}" />
+                        <Setter Target="TagText.Foreground" Value="{StaticResource TagInfoForeground}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <TextBlock
+            x:Name="TagText"
+            FontSize="12"
+            Foreground="{StaticResource TagDefaultForeground}"
+            Text="{x:Bind Text, Mode=OneWay}" />
+    </Border>
+</UserControl>

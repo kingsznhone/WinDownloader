@@ -28,6 +28,7 @@
         </StackPanel>
 
         <Grid
+            Padding="12,24,12,12"
             RowSpacing="18"
             Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
             <Grid.RowDefinitions>
@@ -42,15 +43,11 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Spacing="4">
-                    <TextBlock
+                <TextBlock
+                        Grid.Row="0"
                         FontSize="28"
                         FontWeight="SemiBold"
                         Text="产品目录" />
-                    <TextBlock
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="{x:Bind ViewModel.ResultSummary, Mode=OneWay}" />
-                </StackPanel>
                 <Button
                     Grid.Column="1"
                     Command="{x:Bind ViewModel.ReloadCommand}"
@@ -63,9 +60,7 @@
                 ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <ComboBox
@@ -74,7 +69,9 @@
                     DisplayMemberPath="Label"
                     ItemsSource="{x:Bind ViewModel.Languages, Mode=OneWay}"
                     MaxDropDownHeight="360"
-                    MinWidth="160"
+                    MinWidth="120"
+                    HorizontalAlignment="Stretch"
+                    
                     SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
                 <ComboBox
                     Grid.Column="1"
@@ -82,25 +79,10 @@
                     DisplayMemberPath="Label"
                     ItemsSource="{x:Bind ViewModel.Architectures, Mode=OneWay}"
                     MaxDropDownHeight="360"
-                    MinWidth="140"
+                    MinWidth="120"
+                    HorizontalAlignment="Stretch"
                     SelectedItem="{x:Bind ViewModel.SelectedArchitecture, Mode=TwoWay}" />
-                <ComboBox
-                    Grid.Column="2"
-                    Header="分组"
-                    DisplayMemberPath="Label"
-                    ItemsSource="{x:Bind ViewModel.EditionGroups, Mode=OneWay}"
-                    MaxDropDownHeight="360"
-                    MinWidth="180"
-                    SelectedItem="{x:Bind ViewModel.SelectedEditionGroup, Mode=TwoWay}" />
-                <ComboBox
-                    Grid.Column="3"
-                    Header="版本"
-                    DisplayMemberPath="Label"
-                    ItemsSource="{x:Bind ViewModel.Editions, Mode=OneWay}"
-                    MaxDropDownHeight="360"
-                    MinWidth="180"
-                    SelectedItem="{x:Bind ViewModel.SelectedEdition, Mode=TwoWay}" />
-            </Grid>
+                </Grid>
 
             <TextBlock
                 Grid.Row="2"
@@ -109,7 +91,7 @@
 
             <Grid Grid.Row="3">
                 <ListView
-                    ItemsSource="{x:Bind ViewModel.FilteredFiles, Mode=OneWay}"
+                    ItemsSource="{x:Bind ViewModel.FilteredGroups, Mode=OneWay}"
                     SelectionMode="None">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
@@ -119,8 +101,8 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:RawFile">
-                            <controls:RawFileItemControl RawFile="{Binding}" />
+                        <DataTemplate x:DataType="models:RawFileGroup">
+                            <controls:RawFileItemControl FileGroup="{Binding}" />
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>

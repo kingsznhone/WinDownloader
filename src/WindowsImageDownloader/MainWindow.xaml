@@ -17,7 +17,10 @@
         IsBackButtonVisible="Collapsed"
         IsSettingsVisible="False"
         Loaded="RootNavigation_Loaded"
-        PaneDisplayMode="Left"
+        PaneDisplayMode="Auto"
+        ExpandedModeThresholdWidth="960"
+        OpenPaneLength="180"
+
         SelectionChanged="RootNavigation_SelectionChanged">
         <NavigationView.MenuItems>
             <NavigationViewItem
@@ -26,6 +29,13 @@
                 Icon="Library"
                 Tag="SelectionPage" />
         </NavigationView.MenuItems>
+        <NavigationView.FooterMenuItems>
+            <NavigationViewItem
+                x:Name="SettingsNavigationItem"
+                Content="设置"
+                Icon="Setting"
+                Tag="SettingsPage" />
+        </NavigationView.FooterMenuItems>
         <Frame x:Name="ContentFrame" />
     </NavigationView>
 </Window>

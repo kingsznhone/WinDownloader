@@ -1,5 +1,7 @@
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml.Controls;
 using WindowsImageDownloader.Views.Pages;
+using Microsoft.UI.Xaml;
 
 namespace WindowsImageDownloader;
 
@@ -7,6 +9,12 @@ public sealed partial class MainWindow : Microsoft.UI.Xaml.Window
 {
     public MainWindow()
     {
+        if (this.AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.PreferredMinimumWidth = 1280;
+            presenter.PreferredMinimumHeight = 720;
+        }
+        this.ExtendsContentIntoTitleBar = true;
         InitializeComponent();
     }
 
@@ -20,17 +28,24 @@ public sealed partial class MainWindow : Microsoft.UI.Xaml.Window
         NavigationView sender,
         NavigationViewSelectionChangedEventArgs args)
     {
-        if (args.SelectedItem is NavigationViewItem { Tag: "SelectionPage" })
+        if (args.SelectedItem is NavigationViewItem { Tag: string tag })
         {
-            NavigateToSelectionPage();
+            Navigate(tag);
         }
     }
 
-    private void NavigateToSelectionPage()
+    private void Navigate(string tag)
     {
-        if (ContentFrame.CurrentSourcePageType != typeof(SelectionPage))
+        var pageType = tag switch
         {
-            ContentFrame.Navigate(typeof(SelectionPage));
-        }
+            "SelectionPage" => typeof(SelectionPage),
+            "SettingsPage"  => typeof(SettingsPage),
+            _ => null
+        };
+        if (pageType is not null && ContentFrame.CurrentSourcePageType != pageType)
+            ContentFrame.Navigate(pageType);
     }
+
+    private void NavigateToSelectionPage()
+        => Navigate("SelectionPage");
 }

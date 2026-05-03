@@ -6,9 +6,9 @@ namespace WindowsImageDownloader.Views.Controls;
 
 public sealed partial class RawFileItemControl : UserControl
 {
-    public static readonly DependencyProperty RawFileProperty = DependencyProperty.Register(
-        nameof(RawFile),
-        typeof(RawFile),
+    public static readonly DependencyProperty FileGroupProperty = DependencyProperty.Register(
+        nameof(FileGroup),
+        typeof(RawFileGroup),
         typeof(RawFileItemControl),
         new PropertyMetadata(null));
 
@@ -17,9 +17,9 @@ public sealed partial class RawFileItemControl : UserControl
         InitializeComponent();
     }
 
-    public RawFile? RawFile
+    public RawFileGroup? FileGroup
     {
-        get => (RawFile?)GetValue(RawFileProperty);
-        set => SetValue(RawFileProperty, value);
+        get => (RawFileGroup?)GetValue(FileGroupProperty);
+        set => SetValue(FileGroupProperty, value);
     }
 }
