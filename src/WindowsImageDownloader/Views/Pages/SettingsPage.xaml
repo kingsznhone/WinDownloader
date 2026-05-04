@@ -9,7 +9,7 @@
     mc:Ignorable="d">
 
     <ScrollViewer Padding="24,16">
-        <StackPanel Spacing="4" MaxWidth="900" HorizontalAlignment="Left">
+        <StackPanel Spacing="4"  HorizontalAlignment="Stretch">
 
             <!-- ── 下载设置 ─────────────────────────────────────────────────── -->
             <TextBlock
@@ -25,7 +25,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBox
                         Text="{x:Bind ViewModel.DownloadDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        PlaceholderText="默认下载文件夹"
+                        PlaceholderText="输入路径或点击浏览…"
                         MinWidth="320"
                         IsReadOnly="False" />
                     <Button
@@ -37,20 +37,40 @@
             <!-- 下载分片数 -->
             <ctk:SettingsCard
                 Header="下载分片数"
-                Description="将单个下载任务拆分为多少个并行块（1–32）">
+                Description="将文件等分为 N 段，每段独立 HTTP Range 请求，断点续传粒度更细（1–128）">
                 <ctk:SettingsCard.HeaderIcon>
                     <FontIcon Glyph="&#xE9F5;" />
                 </ctk:SettingsCard.HeaderIcon>
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Slider
                         x:Name="chunkSlider"
-                        Minimum="1" Maximum="32" StepFrequency="1"
-                        TickFrequency="8" TickPlacement="Outside"
+                        Minimum="1" Maximum="256" StepFrequency="1"
+                        TickFrequency="32" TickPlacement="Outside"
                         Value="{x:Bind ViewModel.DownloadChunkCount, Mode=TwoWay}"
                         Width="240" />
                     <TextBlock
-                        VerticalAlignment="Center" MinWidth="28"
+                        VerticalAlignment="Center" MinWidth="36"
                         Text="{x:Bind chunkSlider.Value, Mode=OneWay}" />
+                </StackPanel>
+            </ctk:SettingsCard>
+
+            <!-- 并发流数 -->
+            <ctk:SettingsCard
+                Header="并发流数"
+                Description="同时激活的 HTTP 连接数，不超过分片数即可，超过无额外收益（1–16）">
+                <ctk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE945;" />
+                </ctk:SettingsCard.HeaderIcon>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Slider
+                        x:Name="parallelSlider"
+                        Minimum="1" Maximum="16" StepFrequency="1"
+                        TickFrequency="2" TickPlacement="Outside"
+                        Value="{x:Bind ViewModel.DownloadParallelCount, Mode=TwoWay}"
+                        Width="240" />
+                    <TextBlock
+                        VerticalAlignment="Center" MinWidth="36"
+                        Text="{x:Bind parallelSlider.Value, Mode=OneWay}" />
                 </StackPanel>
             </ctk:SettingsCard>
 
@@ -69,7 +89,7 @@
                         Value="{x:Bind ViewModel.MaxConcurrentDownloads, Mode=TwoWay}"
                         Width="240" />
                     <TextBlock
-                        VerticalAlignment="Center" MinWidth="28"
+                        VerticalAlignment="Center" MinWidth="36"
                         Text="{x:Bind concurrentSlider.Value, Mode=OneWay}" />
                 </StackPanel>
             </ctk:SettingsCard>

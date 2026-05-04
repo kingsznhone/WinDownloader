@@ -18,7 +18,7 @@ public sealed record RawFile(
         ? LanguageCode
         : $"{LanguageCode}";
 
-    public string EditionGroupLabel => EditionLoc switch
+    public string EditionGroupText => EditionLoc switch
     {
         "%CLIENT%" => "消费者零售版",
         "%ENTERPRISE%" => "企业批量许可版",
@@ -26,6 +26,15 @@ public sealed record RawFile(
         "%BASE_CHINA%" => "中国特供版",
         "" => "未分组",
         _ => EditionLoc
+    };
+    public TagType EditionGroupTagType => EditionLoc switch
+    {
+        "%CLIENT%" => TagType.Success,
+        "%ENTERPRISE%" => TagType.Primary,
+        "%ENTERPRISE_N%" => TagType.Primary,
+        "%BASE_CHINA%" => TagType.Warning,
+        "" => TagType.Info,
+        _ => TagType.Danger
     };
 
     public string SizeText => FormatSize(Size);

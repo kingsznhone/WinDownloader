@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:WindowsImageDownloader.Models"
+    xmlns:viewmodels="using:WindowsImageDownloader.ViewModels"
     Loaded="Page_Loaded"
     mc:Ignorable="d">
 
@@ -32,6 +33,7 @@
             RowSpacing="18"
             Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -71,7 +73,7 @@
                     MaxDropDownHeight="360"
                     MinWidth="120"
                     HorizontalAlignment="Stretch"
-                    
+
                     SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
                 <ComboBox
                     Grid.Column="1"
@@ -84,12 +86,20 @@
                     SelectedItem="{x:Bind ViewModel.SelectedArchitecture, Mode=TwoWay}" />
                 </Grid>
 
-            <TextBlock
+            <InfoBar
                 Grid.Row="2"
+                Title="下载任务"
+                IsClosable="True"
+                IsOpen="{x:Bind ViewModel.IsOperationMessageOpen, Mode=TwoWay}"
+                Message="{x:Bind ViewModel.OperationMessage, Mode=OneWay}"
+                Severity="{x:Bind ViewModel.OperationSeverity, Mode=OneWay}" />
+
+            <TextBlock
+                Grid.Row="3"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Text="{x:Bind ViewModel.ResultSummary, Mode=OneWay}" />
 
-            <Grid Grid.Row="3">
+            <Grid Grid.Row="4">
                 <ListView
                     ItemsSource="{x:Bind ViewModel.FilteredGroups, Mode=OneWay}"
                     SelectionMode="None">
@@ -101,8 +111,10 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:RawFileGroup">
-                            <controls:RawFileItemControl FileGroup="{Binding}" />
+                        <DataTemplate x:DataType="viewmodels:RawFileItemViewModel">
+                            <controls:RawFileItemControl
+                                FileGroup="{x:Bind FileGroup}"
+                                DownloadCommand="{x:Bind DownloadCommand}" />
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>

@@ -1,6 +1,6 @@
 using WindowsImageDownloader.Models;
 
-namespace WindowsImageDownloader.Services;
+namespace WindowsImageDownloader.Interfaces;
 
 public interface IUpdateCatalogService
 {

@@ -2,14 +2,16 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using WindowsImageDownloader.Interfaces;
 using WindowsImageDownloader.Models;
-using WindowsImageDownloader.Services;
 
 namespace WindowsImageDownloader.ViewModels;
 
 public sealed partial class SelectionViewModel : ObservableObject
 {
     private readonly IUpdateCatalogService _catalogService;
+    private readonly ITaskOrchestratorService _orchestrator;
     private readonly List<RawFile> _allFiles = new();
     private bool _isUpdatingFilters;
     private bool _hasLoadAttempted;
@@ -17,19 +19,26 @@ public sealed partial class SelectionViewModel : ObservableObject
     private string _loadingMessage = "正在读取 Windows 产品目录...";
     private bool _hasError;
     private string _errorMessage = string.Empty;
+    private string _operationMessage = string.Empty;
+    private InfoBarSeverity _operationSeverity = InfoBarSeverity.Informational;
     private CatalogOption? _selectedLanguage;
     private CatalogOption? _selectedArchitecture;
 
-    public SelectionViewModel(IUpdateCatalogService catalogService)
+    public SelectionViewModel(IUpdateCatalogService catalogService, ITaskOrchestratorService orchestrator)
     {
-        this._catalogService = catalogService;
+        _catalogService = catalogService;
+        _orchestrator = orchestrator;
+        EnqueueDownloadCommand = new AsyncRelayCommand<RawFileGroup>(EnqueueDownloadAsync);
     }
 
     public ObservableCollection<CatalogOption> Languages { get; } = new();
 
     public ObservableCollection<CatalogOption> Architectures { get; } = new();
 
-    public ObservableCollection<RawFileGroup> FilteredGroups { get; } = new();
+    /// <summary>Command exposed to <see cref="Views.Controls.RawFileItemControl"/> for starting an ESD download.</summary>
+    public AsyncRelayCommand<RawFileGroup> EnqueueDownloadCommand { get; }
+
+    public ObservableCollection<RawFileItemViewModel> FilteredGroups { get; } = new();
     public Visibility LoadingVisibility => !_hasLoadAttempted || IsLoading ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility ContentVisibility => _hasLoadAttempted && !IsLoading && !HasError
@@ -84,6 +93,32 @@ public sealed partial class SelectionViewModel : ObservableObject
     {
         get => _errorMessage;
         private set => SetProperty(ref _errorMessage, value);
+    }
+
+    public string OperationMessage
+    {
+        get => _operationMessage;
+        private set
+        {
+            if (SetProperty(ref _operationMessage, value))
+                OnPropertyChanged(nameof(IsOperationMessageOpen));
+        }
+    }
+
+    public InfoBarSeverity OperationSeverity
+    {
+        get => _operationSeverity;
+        private set => SetProperty(ref _operationSeverity, value);
+    }
+
+    public bool IsOperationMessageOpen
+    {
+        get => !string.IsNullOrWhiteSpace(OperationMessage);
+        set
+        {
+            if (!value)
+                OperationMessage = string.Empty;
+        }
     }
 
     public CatalogOption? SelectedLanguage
@@ -252,7 +287,7 @@ public sealed partial class SelectionViewModel : ObservableObject
                 return new RawFileGroup(representative, editions);
             }))
         {
-            FilteredGroups.Add(group);
+            FilteredGroups.Add(new RawFileItemViewModel(group, EnqueueDownloadCommand));
         }
 
         NotifyResultStateChanged();
@@ -324,6 +359,37 @@ public sealed partial class SelectionViewModel : ObservableObject
         OnPropertyChanged(nameof(ContentVisibility));
         OnPropertyChanged(nameof(ResultSummary));
         OnPropertyChanged(nameof(EmptyVisibility));
+    }
+
+    private async Task EnqueueDownloadAsync(RawFileGroup? group)
+    {
+        if (group is null)
+        {
+            return;
+        }
+
+        OperationMessage = string.Empty;
+
+        try
+        {
+            var task = DownloadTask.FromRawFile(group.File, group.Editions);
+            var result = await _orchestrator.EnqueueAsync(task);
+
+            OperationSeverity = result.Succeeded
+                ? InfoBarSeverity.Success
+                : InfoBarSeverity.Warning;
+            OperationMessage = result.Message ?? (result.Succeeded ? "已添加到下载任务。" : "任务未添加。");
+        }
+        catch (OperationCanceledException)
+        {
+            OperationSeverity = InfoBarSeverity.Warning;
+            OperationMessage = "添加下载任务已取消。";
+        }
+        catch (Exception ex)
+        {
+            OperationSeverity = InfoBarSeverity.Error;
+            OperationMessage = $"无法添加下载任务：{ex.Message}";
+        }
     }
 
     private enum FilterChange

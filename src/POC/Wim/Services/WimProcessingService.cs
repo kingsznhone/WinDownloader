@@ -1,7 +1,9 @@
 using ManagedWimLib;
-using WindowsImageDownloader.Models;
+using POC.Wim.Interfaces;
+using POC.Wim.Models;
+using ManagedWim = ManagedWimLib.Wim;
 
-namespace WindowsImageDownloader.Services;
+namespace POC.Wim.Services;
 
 public sealed class WimProcessingService : IWimProcessingService, IDisposable
 {
@@ -16,7 +18,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             EnsureInitialized();
-            return new WimLibraryInfo(Wim.VersionStr);
+            return new WimLibraryInfo(ManagedWim.VersionStr);
         }, cancellationToken);
     }
 
@@ -32,7 +34,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
                 EnsureInitialized();
 
-                using var wim = Wim.OpenWim(imagePath, OpenFlags.None);
+                using var wim = ManagedWim.OpenWim(imagePath, OpenFlags.None);
                 var wimInfo = wim.GetWimInfo();
                 var images = new List<WimImageInfo>((int)wimInfo.ImageCount);
 
@@ -71,7 +73,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 EnsureInitialized();
                 Directory.CreateDirectory(destinationDirectory);
 
-                using var wim = Wim.OpenWim(imagePath, OpenFlags.None);
+                using var wim = ManagedWim.OpenWim(imagePath, OpenFlags.None);
                 RegisterProgressCallback(wim, progress, cancellationToken);
                 wim.ExtractImage(imageIndex, destinationDirectory, ExtractFlags.None);
                 progress?.Report(new WimOperationProgress(WimOperationStage.Completed, "提取完成", 100, null, null, destinationDirectory));
@@ -108,8 +110,8 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 }
 
                 var callback = CreateProgressCallback(progress, cancellationToken);
-                using var sourceWim = Wim.OpenWim(request.SourceImagePath, OpenFlags.None);
-                using var destinationWim = Wim.CreateNewWim(MapCompression(request.Compression));
+                using var sourceWim = ManagedWim.OpenWim(request.SourceImagePath, OpenFlags.None);
+                using var destinationWim = ManagedWim.CreateNewWim(MapCompression(request.Compression));
 
                 if (callback is not null)
                 {
@@ -141,7 +143,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         {
             if (_isInitialized)
             {
-                Wim.TryGlobalCleanup();
+                ManagedWim.TryGlobalCleanup();
                 _isInitialized = false;
             }
         }
@@ -161,12 +163,12 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 return;
             }
 
-            Wim.GlobalInit(InitFlags.None);
+            ManagedWim.GlobalInit(InitFlags.None);
             _isInitialized = true;
         }
     }
 
-    private static WimImageInfo CreateImageInfo(Wim wim, WimInfo wimInfo, int index)
+    private static WimImageInfo CreateImageInfo(ManagedWim wim, WimInfo wimInfo, int index)
     {
         var name = GetOptionalValue(() => wim.GetImageName(index));
         var description = GetOptionalValue(() => wim.GetImageDescription(index));
@@ -185,7 +187,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
             wimInfo.BootIndex == index);
     }
 
-    private static string GetOptionalImageProperty(Wim wim, int imageIndex, params string[] propertyNames)
+    private static string GetOptionalImageProperty(ManagedWim wim, int imageIndex, params string[] propertyNames)
     {
         foreach (var propertyName in propertyNames)
         {
@@ -199,7 +201,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         return string.Empty;
     }
 
-    private static long GetOptionalLongImageProperty(Wim wim, int imageIndex, params string[] propertyNames)
+    private static long GetOptionalLongImageProperty(ManagedWim wim, int imageIndex, params string[] propertyNames)
     {
         var value = GetOptionalImageProperty(wim, imageIndex, propertyNames);
         return long.TryParse(value, out var result) ? result : 0;
@@ -217,7 +219,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         }
     }
 
-    private static void RegisterProgressCallback(Wim wim, IProgress<WimOperationProgress>? progress, CancellationToken cancellationToken)
+    private static void RegisterProgressCallback(ManagedWim wim, IProgress<WimOperationProgress>? progress, CancellationToken cancellationToken)
     {
         var callback = CreateProgressCallback(progress, cancellationToken);
         if (callback is not null)

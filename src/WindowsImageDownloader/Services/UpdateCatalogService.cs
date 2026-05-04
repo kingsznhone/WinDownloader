@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using WindowsImageDownloader.Interfaces;
 using WindowsImageDownloader.Models;
 
 namespace WindowsImageDownloader.Services;
@@ -65,6 +66,9 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
 
     private async Task<(string Url, string Digest)> SearchCatalogAsync(CancellationToken cancellationToken)
     {
+        // TODO: 当前 Products 和 DeviceAttributes 硬编码为 Windows 11 24H2 amd64，
+        //       未来应支持用户选择系统版本（如 Windows 10/11、x64/arm64），
+        //       动态构造请求体
         var requestBody = new
         {
             Products = "PN=Windows.Products.Cab.amd64&V=26100.0.0.0",
@@ -236,7 +240,7 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
                 !string.IsNullOrWhiteSpace(file.FilePath))
             .OrderBy(file => file.LanguageCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(file => file.Architecture, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(file => file.EditionGroupLabel, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(file => file.EditionGroupText, StringComparer.OrdinalIgnoreCase)
             .ThenBy(file => file.Edition, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }

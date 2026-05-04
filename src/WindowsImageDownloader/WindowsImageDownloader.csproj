@@ -21,11 +21,15 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Page Remove="Views\Controls\DownloadTaskItemControl.xaml" />
     <Page Remove="Views\Controls\TagControl.xaml" />
+    <Page Remove="Views\Pages\DownloadPage.xaml" />
   </ItemGroup>
 
   <ItemGroup>
     <Page Include="Views\Controls\TagControl.xaml" />
+    <Page Include="Views\Controls\DownloadTaskItemControl.xaml" />
+    <Page Include="Views\Pages\DownloadPage.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,18 +49,12 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
-    <PackageReference Include="DiscUtils" Version="0.16.13" />
-    <PackageReference Include="ManagedWimLib" Version="2.6.0" />
+    <PackageReference Include="Downloader" Version="5.4.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Views\Controls\TagControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </None>
   </ItemGroup>
 
 </Project>

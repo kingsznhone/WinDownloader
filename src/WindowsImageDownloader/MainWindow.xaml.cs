@@ -1,5 +1,6 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml.Controls;
+using WindowsImageDownloader.ViewModels;
 using WindowsImageDownloader.Views.Pages;
 using Microsoft.UI.Xaml;
 
@@ -7,6 +8,8 @@ namespace WindowsImageDownloader;
 
 public sealed partial class MainWindow : Microsoft.UI.Xaml.Window
 {
+    public DownloadPageViewModel DownloadViewModel { get; } = App.GetService<DownloadPageViewModel>();
+
     public MainWindow()
     {
         if (this.AppWindow.Presenter is OverlappedPresenter presenter)
@@ -39,6 +42,7 @@ public sealed partial class MainWindow : Microsoft.UI.Xaml.Window
         var pageType = tag switch
         {
             "SelectionPage" => typeof(SelectionPage),
+            "DownloadPage"  => typeof(DownloadPage),
             "SettingsPage"  => typeof(SettingsPage),
             _ => null
         };

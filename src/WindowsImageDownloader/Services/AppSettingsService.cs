@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using WindowsImageDownloader.Interfaces;
 
 namespace WindowsImageDownloader.Services;
 
@@ -28,8 +29,18 @@ public sealed class AppSettingsService : IAppSettings
     /// </summary>
     public int DownloadChunkCount
     {
-        get => Math.Clamp(Get(Keys.DownloadChunkCount, Defaults.DownloadChunkCount), 1, 32);
-        set => Set(Keys.DownloadChunkCount, Math.Clamp(value, 1, 32));
+        get => Math.Clamp(Get(Keys.DownloadChunkCount, Defaults.DownloadChunkCount), 1, 256);
+        set => Set(Keys.DownloadChunkCount, Math.Clamp(value, 1, 256));
+    }
+
+    /// <summary>
+    /// Number of parallel HTTP streams per download (≤ ChunkCount).
+    /// Default: 4. Clamped to 1–32.
+    /// </summary>
+    public int DownloadParallelCount
+    {
+        get => Math.Clamp(Get(Keys.DownloadParallelCount, Defaults.DownloadParallelCount), 1, 16);
+        set => Set(Keys.DownloadParallelCount, Math.Clamp(value, 1, 16));
     }
 
     /// <summary>
@@ -43,14 +54,15 @@ public sealed class AppSettingsService : IAppSettings
     }
 
     /// <summary>
-    /// Directory where downloaded ESD files and converted output are saved.
+    /// Directory where downloaded ESD files are saved.
     /// </summary>
     public string? DownloadDirectory
     {
-        get => Get<string?>(Keys.DownloadDirectory, null);
+        get => Get<string?>(Keys.DownloadDirectory, null) ?? Defaults.DownloadDirectory;
         set
         {
-            if (value is null)
+            // Store null when the value matches the default (keeps settings file clean)
+            if (value is null || value == Defaults.DownloadDirectory)
                 Remove(Keys.DownloadDirectory);
             else
                 Set(Keys.DownloadDirectory, value);
@@ -106,6 +118,7 @@ public sealed class AppSettingsService : IAppSettings
         }
 
         SetIfMissing(Keys.DownloadChunkCount,     Defaults.DownloadChunkCount);
+        SetIfMissing(Keys.DownloadParallelCount,  Defaults.DownloadParallelCount);
         SetIfMissing(Keys.MaxConcurrentDownloads, Defaults.MaxConcurrentDownloads);
         // DownloadDirectory and AppLanguage intentionally omitted (null default)
     }
@@ -114,6 +127,7 @@ public sealed class AppSettingsService : IAppSettings
     public void Reset()
     {
         DownloadChunkCount = Defaults.DownloadChunkCount;
+        DownloadParallelCount = Defaults.DownloadParallelCount;
         MaxConcurrentDownloads = Defaults.MaxConcurrentDownloads;
         DownloadDirectory = null;
         AppLanguage = null;
@@ -299,6 +313,7 @@ public sealed class AppSettingsService : IAppSettings
     private static class Keys
     {
         public const string DownloadChunkCount = nameof(DownloadChunkCount);
+        public const string DownloadParallelCount = nameof(DownloadParallelCount);
         public const string MaxConcurrentDownloads = nameof(MaxConcurrentDownloads);
         public const string DownloadDirectory = nameof(DownloadDirectory);
         public const string AppLanguage = nameof(AppLanguage);
@@ -308,9 +323,16 @@ public sealed class AppSettingsService : IAppSettings
 
     internal static class Defaults
     {
-        public const int DownloadChunkCount = 4;
-        public const int MaxConcurrentDownloads = 2;
-        public const string? DownloadDirectory = null;
+        public const int DownloadChunkCount = 32;
+        public const int DownloadParallelCount = 4;
+        public const int MaxConcurrentDownloads = 1;
         public const string? AppLanguage = null; // null = follow system
+
+        /// <summary>
+        /// Returns the user's Downloads folder as reported by Windows
+        /// (respects folder relocations set in Explorer).
+        /// </summary>
+        public static string DownloadDirectory
+            => Windows.Storage.UserDataPaths.GetDefault().Downloads;
     }
 }

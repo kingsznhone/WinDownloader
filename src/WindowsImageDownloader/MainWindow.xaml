@@ -18,6 +18,7 @@
         IsSettingsVisible="False"
         Loaded="RootNavigation_Loaded"
         PaneDisplayMode="Auto"
+        PaneTitle="WID"
         ExpandedModeThresholdWidth="960"
         OpenPaneLength="180"
 
@@ -28,6 +29,17 @@
                 Content="产品目录"
                 Icon="Library"
                 Tag="SelectionPage" />
+            <NavigationViewItem
+                x:Name="DownloadNavigationItem"
+                Content="下载任务"
+                Icon="Download"
+                Tag="DownloadPage">
+                <NavigationViewItem.InfoBadge>
+                    <InfoBadge
+                        Value="{x:Bind DownloadViewModel.PendingTaskCount, Mode=OneWay}"
+                        Visibility="{x:Bind DownloadViewModel.PendingTaskBadgeVisibility, Mode=OneWay}" />
+                </NavigationViewItem.InfoBadge>
+            </NavigationViewItem>
         </NavigationView.MenuItems>
         <NavigationView.FooterMenuItems>
             <NavigationViewItem

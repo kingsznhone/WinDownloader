@@ -1,6 +1,6 @@
-using WindowsImageDownloader.Models;
+using POC.Wim.Models;
 
-namespace WindowsImageDownloader.Services;
+namespace POC.Wim.Interfaces;
 
 public interface IWimProcessingService
 {

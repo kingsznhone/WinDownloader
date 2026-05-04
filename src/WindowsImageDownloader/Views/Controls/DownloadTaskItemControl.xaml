@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="WindowsImageDownloader.Views.Controls.DownloadTaskItemControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:WindowsImageDownloader.Converters"
+    xmlns:controls="using:WindowsImageDownloader.Views.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="Root"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Border
+        Padding="16"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        BorderThickness="1"
+        CornerRadius="8">
+
+        <Grid RowSpacing="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Row 0: Title + badge tags (same layout as RawFileItemControl) -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontSize="18"
+                    FontWeight="SemiBold"
+                    Text="{Binding FileName}"
+                    TextTrimming="CharacterEllipsis" />
+
+                <StackPanel
+                    Grid.Column="1"
+                    Margin="12,0,0,0"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center">
+                    <controls:TagControl
+                        Text="{Binding LanguageText}"
+                        Type="Primary" />
+                    <controls:TagControl
+                        Text="{Binding EditionGroupText}"
+                        Type="{Binding EditionGroupTagType}" />
+                    <controls:TagControl
+                        Text="{Binding RetailText}"
+                        Type="{Binding RetailTagType}" />
+                    <controls:TagControl
+                        Text="{Binding Architecture}"
+                        Type="{Binding ArchTagType}" />
+                    <controls:TagControl
+                        Text="{Binding SizeText}"
+                        Type="Primary" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Row 1: SHA-256 (monospace) -->
+            <TextBlock
+                Grid.Row="1"
+                FontFamily="Consolas"
+                FontSize="11"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="{Binding Sha256}"
+                TextTrimming="CharacterEllipsis" />
+
+            <!-- Row 2: Editions chip list -->
+            <ItemsControl
+                Grid.Row="2"
+                ItemsSource="{Binding Editions}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <controls:WrapPanel HorizontalSpacing="6" VerticalSpacing="6" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:TagControl
+                            Text="{Binding}"
+                            Type="Default" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Row 3: Download progress (Queued / Downloading / Verifying) -->
+            <Grid
+                Grid.Row="3"
+                RowSpacing="6"
+                Visibility="{Binding ShowDownloadProgress, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ProgressBar
+                        Grid.Column="0"
+                        Minimum="0"
+                        Maximum="1"
+                        Value="{Binding Progress}"
+                        IsIndeterminate="{Binding IsVerifying}"
+                        VerticalAlignment="Center"
+                        Height="6" />
+
+                    <TextBlock
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{Binding SpeedText}"
+                        MinWidth="84"
+                        TextAlignment="Right" />
+
+                    <!-- Pause (only while Downloading) -->
+                    <Button
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Command="{Binding PauseCommand}"
+                        Visibility="{Binding CanPause, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontSize="12" Glyph="&#xE769;" />
+                            <TextBlock Text="暂停" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Resume (only while Queued/paused) -->
+                    <Button
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Command="{Binding ResumeCommand}"
+                        Visibility="{Binding CanResume, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontSize="12" Glyph="&#xE768;" />
+                            <TextBlock Text="继续" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Cancel -->
+                    <Button
+                        Grid.Column="3"
+                        VerticalAlignment="Center"
+                        Command="{Binding CancelCommand}"
+                        Visibility="{Binding CanCancel, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontSize="12" Glyph="&#xE711;" />
+                            <TextBlock Text="{Binding CancelButtonText}" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- Status text -->
+                <TextBlock
+                    Grid.Row="1"
+                    FontSize="11"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="{Binding StatusText}"
+                    Visibility="{Binding HasStatusText, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </Grid>
+
+            <!-- Row 4: Operation and error messages -->
+            <StackPanel Grid.Row="4" Spacing="4">
+                <TextBlock
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="{Binding OperationMessage}"
+                    TextWrapping="WrapWholeWords"
+                    Visibility="{Binding HasOperationMessage, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <TextBlock
+                    FontSize="12"
+                    Foreground="#E81123"
+                    Text="{Binding ErrorMessage}"
+                    TextWrapping="WrapWholeWords"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
+
+            <!-- Row 5: Action bar – visible once ESD download completes -->
+            <Grid
+                Grid.Row="5"
+                Visibility="{Binding ShowActionBar, Converter={StaticResource BoolToVisibilityConverter}}">
+
+                <!-- Delete (left) -->
+                <Button
+                    HorizontalAlignment="Left"
+                    Command="{Binding DeleteCommand}"
+                    Background="#E81123">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="12" Glyph="&#xE74D;" Foreground="White" />
+                        <TextBlock Text="删除文件" Foreground="White" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Open ESD directory (right) -->
+                <Button
+                    HorizontalAlignment="Right"
+                    Command="{Binding OpenDirectoryCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="12" Glyph="&#xE838;" />
+                        <TextBlock Text="打开目录" />
+                    </StackPanel>
+                </Button>
+
+            </Grid>
+
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace WindowsImageDownloader.Services;
+namespace WindowsImageDownloader.Interfaces;
 
 /// <summary>
 /// Application settings interface for WindowsImageDownloader.
@@ -9,18 +9,24 @@ public interface IAppSettings : INotifyPropertyChanged
 {
     /// <summary>
     /// Number of chunks to split a download into for multi-threaded downloading.
-    /// Default: 4. Clamped to 1–32.
+    /// Default: 32. Clamped to 1–128.
     /// </summary>
     int DownloadChunkCount { get; set; }
 
     /// <summary>
+    /// Number of parallel HTTP streams per download (≤ ChunkCount).
+    /// Default: 4. Clamped to 1–16.
+    /// </summary>
+    int DownloadParallelCount { get; set; }
+
+    /// <summary>
     /// Maximum number of download tasks running concurrently.
-    /// Default: 2. Clamped to 1–16.
+    /// Default: 1. Clamped to 1–16.
     /// </summary>
     int MaxConcurrentDownloads { get; set; }
 
     /// <summary>
-    /// Directory where downloaded ESD files and converted output are saved.
+    /// Directory where downloaded ESD files are saved.
     /// Falls back to default download folder when null or empty.
     /// </summary>
     string? DownloadDirectory { get; set; }

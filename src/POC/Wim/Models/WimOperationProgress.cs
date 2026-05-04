@@ -1,4 +1,4 @@
-namespace WindowsImageDownloader.Models;
+namespace POC.Wim.Models;
 
 public sealed record WimOperationProgress(
     WimOperationStage Stage,
