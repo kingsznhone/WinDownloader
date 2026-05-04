@@ -109,8 +109,8 @@ SelectionPage
 
 - `TaskChanged` 可从后台线程触发，ViewModel 必须通过 `DispatcherQueue.TryEnqueue` 应用快照。
 - `_taskMap` 使用 `ConcurrentDictionary`；`_tasks` 是 UI 绑定集合，只在 UI 线程添加/删除。
-- 下载并发由 `TaskOrchestratorService._downloadSemaphore` 控制，容量来自 `MaxConcurrentDownloads`。
-- `MaxConcurrentDownloads` 在 `TaskOrchestratorService` 构造时读取，修改后需要重启生效。
+- 下载并发由 `TaskOrchestratorService` 在任务启动前读取 `MaxConcurrentDownloads` 控制。
+- 调高 `MaxConcurrentDownloads` 会影响后续排队任务；调低不会中断已运行下载，但会限制新的任务启动。
 
 ## 数据持久化
 

@@ -1,6 +1,7 @@
 using ManagedWimLib;
 using POC.Wim.Interfaces;
 using POC.Wim.Models;
+using System.Runtime.InteropServices;
 using ManagedWim = ManagedWimLib.Wim;
 
 namespace POC.Wim.Services;
@@ -122,7 +123,87 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 var exportFlags = request.MarkBootable ? ExportFlags.Boot : ExportFlags.None;
                 var writeFlags = request.CheckIntegrity ? WriteFlags.CheckIntegrity : WriteFlags.None;
                 sourceWim.ExportImage(request.ImageIndex, destinationWim, request.ImageName, request.ImageDescription, exportFlags);
-                destinationWim.Write(request.DestinationImagePath, 0, writeFlags, 0);
+                destinationWim.Write(request.DestinationImagePath, ManagedWim.AllImages, writeFlags, 0);
+                progress?.Report(new WimOperationProgress(WimOperationStage.Completed, "导出完成", 100, null, null, request.DestinationImagePath));
+            }, cancellationToken);
+        }
+        finally
+        {
+            _operationLock.Release();
+        }
+    }
+
+    public async Task ExportImagesAsync(
+        WimMultiImageExportRequest request,
+        IProgress<WimOperationProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateExistingFile(request.SourceImagePath, nameof(request.SourceImagePath));
+        ValidateFilePath(request.DestinationImagePath, nameof(request.DestinationImagePath));
+
+        if (request.Images.Count == 0)
+        {
+            throw new ArgumentException("至少需要一个待导出的映像。", nameof(request.Images));
+        }
+
+        foreach (var image in request.Images)
+        {
+            ValidateImageIndex(image.ImageIndex);
+        }
+
+        await _operationLock.WaitAsync(cancellationToken);
+        try
+        {
+            await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                EnsureInitialized();
+
+                var destinationDirectory = Path.GetDirectoryName(request.DestinationImagePath);
+                if (!string.IsNullOrWhiteSpace(destinationDirectory))
+                {
+                    Directory.CreateDirectory(destinationDirectory);
+                }
+
+                if (File.Exists(request.DestinationImagePath))
+                {
+                    File.Delete(request.DestinationImagePath);
+                }
+
+                var callback = CreateProgressCallback(progress, cancellationToken);
+                using var sourceWim = ManagedWim.OpenWim(request.SourceImagePath, OpenFlags.None);
+                using var destinationWim = ManagedWim.CreateNewWim(MapCompression(request.Compression));
+                ConfigureOutput(destinationWim, request);
+
+                if (callback is not null)
+                {
+                    sourceWim.RegisterCallback(callback);
+                    destinationWim.RegisterCallback(callback);
+                }
+
+                foreach (var image in request.Images)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var exportFlags = image.MarkBootable ? ExportFlags.Boot : ExportFlags.None;
+                    sourceWim.ExportImage(
+                        image.ImageIndex,
+                        destinationWim,
+                        image.ImageName,
+                        image.ImageDescription,
+                        exportFlags);
+
+                    progress?.Report(new WimOperationProgress(
+                        WimOperationStage.Metadata,
+                        $"已加入映像 {image.ImageIndex}",
+                        null,
+                        null,
+                        null,
+                        image.ImageName));
+                }
+
+                var writeFlags = CreateWriteFlags(request);
+                destinationWim.Write(request.DestinationImagePath, ManagedWim.AllImages, writeFlags, 0);
                 progress?.Report(new WimOperationProgress(WimOperationStage.Completed, "导出完成", 100, null, null, request.DestinationImagePath));
             }, cancellationToken);
         }
@@ -163,9 +244,90 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 return;
             }
 
-            ManagedWim.GlobalInit(InitFlags.None);
+            var nativeLibraryPath = ResolvePackagedNativeLibraryPath();
+            if (nativeLibraryPath is not null)
+            {
+                ManagedWim.GlobalInit(nativeLibraryPath, InitFlags.None);
+            }
+            else
+            {
+                ManagedWim.GlobalInit(InitFlags.None);
+            }
+
             _isInitialized = true;
         }
+    }
+
+    private static string? ResolvePackagedNativeLibraryPath()
+    {
+        var runtimeIdentifier = GetNativeRuntimeIdentifier();
+        if (runtimeIdentifier is null)
+        {
+            return null;
+        }
+
+        var libraryFileName = GetNativeLibraryFileName();
+        if (libraryFileName is null)
+        {
+            return null;
+        }
+
+        var path = Path.Combine(AppContext.BaseDirectory, "runtimes", runtimeIdentifier, "native", libraryFileName);
+        return File.Exists(path) ? path : null;
+    }
+
+    private static string? GetNativeRuntimeIdentifier()
+    {
+        var architecture = RuntimeInformation.ProcessArchitecture switch
+        {
+            Architecture.X64 => "x64",
+            Architecture.X86 => "x86",
+            Architecture.Arm => "arm",
+            Architecture.Arm64 => "arm64",
+            _ => null
+        };
+
+        if (architecture is null)
+        {
+            return null;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return architecture == "arm" ? null : $"win-{architecture}";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return architecture is "x64" or "arm64" ? $"osx-{architecture}" : null;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return architecture == "x86" ? null : $"linux-{architecture}";
+        }
+
+        return null;
+    }
+
+    private static string? GetNativeLibraryFileName()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return "libwim-15.dll";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return "libwim.dylib";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return "libwim.so";
+        }
+
+        return null;
     }
 
     private static WimImageInfo CreateImageInfo(ManagedWim wim, WimInfo wimInfo, int index)
@@ -316,6 +478,45 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
             WimCompressionKind.LZMS => CompressionType.LZMS,
             _ => throw new ArgumentOutOfRangeException(nameof(compression), compression, null)
         };
+    }
+
+    private static void ConfigureOutput(ManagedWim wim, WimMultiImageExportRequest request)
+    {
+        var compression = MapCompression(request.Compression);
+        wim.SetOutputCompressionType(compression);
+        wim.SetOutputPackCompressionType(compression);
+
+        if (request.OutputChunkSize > 0)
+        {
+            wim.SetOutputChunkSize(request.OutputChunkSize);
+        }
+
+        if (request.OutputPackChunkSize > 0)
+        {
+            wim.SetOutputPackChunkSize(request.OutputPackChunkSize);
+        }
+    }
+
+    private static WriteFlags CreateWriteFlags(WimMultiImageExportRequest request)
+    {
+        var flags = WriteFlags.None;
+
+        if (request.CheckIntegrity)
+        {
+            flags |= WriteFlags.CheckIntegrity;
+        }
+
+        if (request.Recompress)
+        {
+            flags |= WriteFlags.Recompress;
+        }
+
+        if (request.Solid)
+        {
+            flags |= WriteFlags.Solid;
+        }
+
+        return flags;
     }
 
     private static void ValidateExistingFile(string path, string parameterName)

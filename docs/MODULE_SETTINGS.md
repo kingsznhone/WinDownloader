@@ -73,5 +73,5 @@ public interface IAppSettings : INotifyPropertyChanged
 
 ## 注意事项
 
-- `MaxConcurrentDownloads` 被 `TaskOrchestratorService` 构造时读取，运行时修改需要重启后影响现有信号量容量。
+- `MaxConcurrentDownloads` 会影响后续准备启动的下载任务；运行时调低不会中断已运行下载。
 - `DownloadDirectory` 为空时服务层应回退到默认下载目录。

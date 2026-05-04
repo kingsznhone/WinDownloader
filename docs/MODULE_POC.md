@@ -19,14 +19,22 @@ src/POC/
 ├── Program.cs
 ├── README.md
 └── Wim/
-    ├── Interfaces/IWimProcessingService.cs
+    ├── Interfaces/
+    │   ├── IEsdToIsoPipelineService.cs
+    │   ├── IIsoCreationService.cs
+    │   └── IWimProcessingService.cs
     ├── Models/
-    │   ├── WimCompressionKind.cs
-    │   ├── WimExportRequest.cs
-    │   ├── WimImageInfo.cs
-    │   ├── WimLibraryInfo.cs
-    │   └── WimOperationProgress.cs
-    └── Services/WimProcessingService.cs
+    │   ├── EsdToIso*.cs
+    │   ├── IsoCreation*.cs
+    │   ├── InstallImageFormat.cs
+    │   ├── Wim*.cs
+    │   └── ...
+    └── Services/
+        ├── EsdToIsoPipelineService.cs
+        ├── OscdimgIsoCreationService.cs
+        ├── DiscUtilsIsoCreationService.cs
+        ├── WimProcessingService.cs
+        └── ...
 ```
 
 ## 依赖
@@ -34,7 +42,74 @@ src/POC/
 | 依赖 | 用途 |
 |------|------|
 | ManagedWimLib | WIM 读取、提取、导出 |
-| DiscUtils | ISO 创建实验预留 |
+| DiscUtils | 纯托管 ISO 创建实验后端 |
+
+## Program.cs 实验入口
+
+当前 `Program.cs` 硬编码一个本地 ESD 源文件，用于 ESD 到 ISO 后处理实验：
+
+- 启动后先确认源 ESD 存在。
+- 通过 `WimProcessingService.GetLibraryInfoAsync()` 输出 wimlib 版本。
+- 通过 `GetImagesAsync()` 枚举 ESD 内的映像索引、名称、版本信息和估算大小。
+- 执行单个 ESD 到标准 ISO staging 的验证流程，默认保留中间目录和 WIM/ESD 输出。
+- 支持 `--inspect-only` 只枚举源 ESD，不执行大体积转换。
+
+常用参数：
+
+```powershell
+dotnet run --project .\src\POC\POC.csproj -- --inspect-only
+dotnet run --project .\src\POC\POC.csproj -- --install-format esd --iso-backend both
+dotnet run --project .\src\POC\POC.csproj -- --install-format both --iso-backend oscdimg --output-root D:\IsoPoc
+```
+
+参数说明：
+
+| 参数 | 值 | 默认 | 说明 |
+|------|----|------|------|
+| `--source` | ESD 路径 | 硬编码实验 ESD | 覆盖默认源文件 |
+| `--output-root` | 目录 | 源 ESD 同级 `poc-iso-output` | POC run 输出根目录 |
+| `--install-format` | `esd` / `wim` / `both` | `esd` | 生成 `install.esd`、`install.wim` 或两者 |
+| `--iso-backend` | `oscdimg` / `discutils` / `both` | `both` | 选择 ISO 创建后端 |
+| `--volume-label` | 卷标 | `ESD_ISO` | ISO 卷标 |
+| `--inspect-only` | 无 | 关闭 | 只枚举映像和计划，不转换 |
+
+## ESD 到 ISO 映像关系
+
+当前 POC 使用单个 ESD 的标准映像角色：
+
+| 源 ESD 映像 | 目标 | 说明 |
+|-------------|------|------|
+| image 1 | `staging\` | 展开成 ISO 文件树骨架 |
+| image 2 | `staging\sources\boot.wim` index 1 | Windows PE |
+| image 3 | `staging\sources\boot.wim` index 2 | Windows Setup，标记 bootable |
+| image 4..n | `staging\sources\install.esd` 或 `install.wim` | 安装系统版本 |
+
+压缩策略固定在 POC 管道中：
+
+- `boot.wim` 使用 `LZX`，避免对启动映像使用高压缩率算法。
+- `install.esd` 使用 `LZMS` 和 solid 写入，偏体积。
+- `install.wim` 使用 `LZX`，偏兼容和可检查性。
+- 普通用户路径不暴露原始压缩算法选择；由输出格式推导。
+
+## ISO 创建后端
+
+| 后端 | 定位 | 注意事项 |
+|------|------|----------|
+| `oscdimg` | 兼容性目标 | 需要 Windows ADK；使用 BIOS + UEFI boot data；缺工具时只标记后端 skipped，不删除中间产物 |
+| `DiscUtils` | 纯托管实验对照 | 使用 `CDBuilder`；不承诺等价于 ADK 的 UDF/双启动 ISO；遇到超过 4 GiB 的单文件会跳过，避免 ISO9660/Joliet 长度截断 |
+
+每次运行会生成：
+
+| 文件/目录 | 用途 |
+|-----------|------|
+| `staging\` | ISO 根目录，中间文件保留供探索 |
+| `staging\sources\boot.wim` | 由 image 2+3 生成 |
+| `staging\sources\install.esd` / `install.wim` | 由 image 4..n 生成 |
+| `*-oscdimg.iso` | oscdimg 后端产物 |
+| `*-discutils.iso` | DiscUtils 后端产物 |
+| `events.ndjson` | 阶段和进度事件流 |
+| `manifest.json` | 输入、输出、文件大小、后端结果和 warning |
+| `summary.txt` | 人类可读摘要 |
 
 ## WimProcessingService
 
@@ -47,18 +122,22 @@ Task ExtractImageAsync(string imagePath, int imageIndex, string destinationDirec
     IProgress<WimOperationProgress>? progress = null, CancellationToken ct = default);
 Task ExportImageAsync(WimExportRequest request,
     IProgress<WimOperationProgress>? progress = null, CancellationToken ct = default);
+Task ExportImagesAsync(WimMultiImageExportRequest request,
+    IProgress<WimOperationProgress>? progress = null, CancellationToken ct = default);
 ```
 
 实现要点：
 
 - 使用 `SemaphoreSlim(1, 1)` 串行化 WIM 操作。
-- 延迟执行 `ManagedWim.GlobalInit()`，释放时执行 `TryGlobalCleanup()`。
+- 延迟执行 `ManagedWim.GlobalInit()`，优先显式加载 NuGet 输出目录下的 packaged native `libwim`，释放时执行 `TryGlobalCleanup()`。
 - 通过 ManagedWimLib callback 映射 `WimOperationProgress`。
+- `ExportImagesAsync()` 用于把多个 ESD image 写入同一个目标 WIM/ESD，例如 `boot.wim` 和 `install.esd`。
+- `Wim.Write()` 写出目标 WIM/ESD 时使用 `ManagedWim.AllImages`；`0` 是 `NoImage`，会触发 `InvalidImage`。
 - 命名空间为 `POC.Wim.*`，避免与主项目模型混用。
 
 ## 后续验证方向
 
-- 明确 ESD 到 WIM 的输入、输出、失败恢复和权限要求。
-- 评估 ISO 创建方案和 DiscUtils 能力边界。
-- 验证大型镜像处理的进度、取消、临时文件清理和错误提示。
+- 验证 `boot.wim` 和 `install.esd/install.wim` 的映像索引、boot 标记、压缩和文件大小。
+- 对比 `oscdimg` 与 `DiscUtils` 产物的挂载结果和 UEFI 虚拟机启动结果。
+- 验证大型镜像处理的进度、取消、临时文件保留和错误提示。
 - POC 跑通后再决定是否以新模块形式回迁主项目。

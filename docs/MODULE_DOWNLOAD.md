@@ -168,6 +168,6 @@ IReadOnlyList<DownloadTask> Tasks { get; }
 
 ## 注意事项
 
-- `MaxConcurrentDownloads` 在 `TaskOrchestratorService` 构造时读取，修改后需要重启应用才能改变信号量容量。
+- `MaxConcurrentDownloads` 在下载任务准备启动时读取；调低不会中断已运行下载，但会限制后续任务启动。
 - `DownloadService` 内部底层 Downloader 实例不可跨下载复用；当前包装器每次调用都会新建实例。
 - 主项目没有转换管道；WIM/ISO 实验见 [MODULE_POC.md](MODULE_POC.md)。

@@ -29,7 +29,7 @@ WIM/ISO 后处理已从主项目剥离到 `src/POC`，用于后续概念验证�
 | 主应用 ESD-only | 不在主项目中添加 WIM/ISO 转换代码或格式状态 |
 | Downloader 包装 | `DownloadService` 可注册为 Singleton；每次 `DownloadAsync` 内部创建独立 Downloader 实例 |
 | UI 线程 | `ObservableCollection` 和 XAML 绑定更新必须经 `DispatcherQueue.TryEnqueue` |
-| 任务并发 | `TaskOrchestratorService` 使用 `SemaphoreSlim` 按 `MaxConcurrentDownloads` 限流 |
+| 任务并发 | `TaskOrchestratorService` 在任务启动前读取 `MaxConcurrentDownloads` 限流 |
 | SQLite schema | 不兼容或损坏时自动删除重建；用户已接受缓存重建 |
 | 路径职责 | 下载路径由 `IDownloadTaskPathService` 统一解析 |
 | 校验职责 | ESD 下载与 SHA-256 校验由 `IEsdDownloadPipeline` 封装 |

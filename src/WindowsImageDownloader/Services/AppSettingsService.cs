@@ -45,7 +45,7 @@ public sealed class AppSettingsService : IAppSettings
 
     /// <summary>
     /// Maximum number of download tasks running concurrently.
-    /// Default: 2. Clamped to 1–16.
+    /// Default: 1. Clamped to 1–16.
     /// </summary>
     public int MaxConcurrentDownloads
     {

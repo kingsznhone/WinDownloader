@@ -66,13 +66,10 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
 
     private async Task<(string Url, string Digest)> SearchCatalogAsync(CancellationToken cancellationToken)
     {
-        // TODO: 当前 Products 和 DeviceAttributes 硬编码为 Windows 11 24H2 amd64，
-        //       未来应支持用户选择系统版本（如 Windows 10/11、x64/arm64），
-        //       动态构造请求体
         var requestBody = new
         {
-            Products = "PN=Windows.Products.Cab.amd64&V=26100.0.0.0",
-            DeviceAttributes = "DUScan=1;OSVersion=10.0.026100.1"
+            Products = "PN=Windows.Products.Cab.amd64&V=26200.0.0.0",
+            DeviceAttributes = "DUScan=1;OSVersion=10.0.026200.1"
         };
 
         using var jsonContent = new StringContent(

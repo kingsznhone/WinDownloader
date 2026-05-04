@@ -91,7 +91,7 @@ SelectionViewModel.EnqueueDownloadAsync
 - `TaskOrchestratorService._taskMap` 使用 `ConcurrentDictionary`。
 - `TaskOrchestratorService._tasks` 是 `ObservableCollection`，只在 UI 线程添加/删除，后台线程只读。
 - `TaskChanged` 可能从后台线程触发；`DownloadTaskItemViewModel` 使用 `DispatcherQueue.TryEnqueue` 合并并应用快照。
-- 下载并发由 `TaskOrchestratorService._downloadSemaphore` 控制。
+- 下载并发由 `TaskOrchestratorService` 在任务启动前读取 `MaxConcurrentDownloads` 控制。
 
 ## 设置项扩展流程
 

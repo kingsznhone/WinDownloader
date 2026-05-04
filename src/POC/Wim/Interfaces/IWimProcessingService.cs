@@ -19,4 +19,9 @@ public interface IWimProcessingService
         WimExportRequest request,
         IProgress<WimOperationProgress>? progress = null,
         CancellationToken cancellationToken = default);
+
+    Task ExportImagesAsync(
+        WimMultiImageExportRequest request,
+        IProgress<WimOperationProgress>? progress = null,
+        CancellationToken cancellationToken = default);
 }

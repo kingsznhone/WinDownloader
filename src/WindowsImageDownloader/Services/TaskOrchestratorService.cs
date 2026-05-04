@@ -25,7 +25,8 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
     private readonly ConcurrentDictionary<string, byte> _cancelledTasks = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Task> _downloadWorkers = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _shutdownCts = new();
-    private readonly SemaphoreSlim _downloadSemaphore;
+    private static readonly TimeSpan DownloadSlotPollInterval = TimeSpan.FromMilliseconds(250);
+    private int _activeDownloadCount;
     private bool _disposed;
 
     public TaskOrchestratorService(
@@ -43,9 +44,6 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
         _downloadPipeline = downloadPipeline;
         _pathService = pathService;
         _settings = settings;
-        _downloadSemaphore = new SemaphoreSlim(
-            settings.MaxConcurrentDownloads,
-            settings.MaxConcurrentDownloads);
     }
 
     // ── IHostedService ────────────────────────────────────────────────────────
@@ -286,26 +284,18 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
 
     private async Task ProcessDownloadAsync(DownloadTask task, CancellationToken shutdownToken)
     {
-        try
-        {
-            await _downloadSemaphore.WaitAsync(shutdownToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
-        {
-            return;
-        }
-
-        if (!_taskMap.ContainsKey(task.Sha256))
-        {
-            _downloadSemaphore.Release();
-            return;
-        }
-
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
-        _activeCts[task.Sha256] = cts;
+        var acquiredSlot = false;
+        CancellationTokenSource? cts = null;
 
         try
         {
+            acquiredSlot = await WaitForDownloadSlotAsync(task, shutdownToken).ConfigureAwait(false);
+            if (!acquiredSlot || !_taskMap.ContainsKey(task.Sha256))
+                return;
+
+            cts = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
+            _activeCts[task.Sha256] = cts;
+
             if (task.State != TaskState.Queued)
                 return;
 
@@ -396,9 +386,14 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
         }
         finally
         {
-            TryRemoveActiveCts(task.Sha256, cts);
-            cts.Dispose();
-            _downloadSemaphore.Release();
+            if (cts is not null)
+            {
+                TryRemoveActiveCts(task.Sha256, cts);
+                cts.Dispose();
+            }
+
+            if (acquiredSlot)
+                ReleaseDownloadSlot();
         }
     }
 
@@ -420,6 +415,38 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
         TaskState.Failed      => "该文件已有失败任务，请先在下载任务页移除后再重新添加。",
         _                     => "该下载任务已经存在。",
     };
+
+    private async Task<bool> WaitForDownloadSlotAsync(DownloadTask task, CancellationToken shutdownToken)
+    {
+        while (!shutdownToken.IsCancellationRequested)
+        {
+            if (!_taskMap.ContainsKey(task.Sha256) || task.State != TaskState.Queued)
+                return false;
+
+            if (TryAcquireDownloadSlot())
+                return true;
+
+            await Task.Delay(DownloadSlotPollInterval, shutdownToken).ConfigureAwait(false);
+        }
+
+        return false;
+    }
+
+    private bool TryAcquireDownloadSlot()
+    {
+        while (true)
+        {
+            var maxConcurrentDownloads = _settings.MaxConcurrentDownloads;
+            var current = Volatile.Read(ref _activeDownloadCount);
+            if (current >= maxConcurrentDownloads)
+                return false;
+
+            if (Interlocked.CompareExchange(ref _activeDownloadCount, current + 1, current) == current)
+                return true;
+        }
+    }
+
+    private void ReleaseDownloadSlot() => Interlocked.Decrement(ref _activeDownloadCount);
 
     private static void TryDeleteFile(string path)
     {
@@ -463,6 +490,5 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
             await StopAsync(CancellationToken.None).ConfigureAwait(false);
 
         _shutdownCts.Dispose();
-        _downloadSemaphore.Dispose();
     }
 }
