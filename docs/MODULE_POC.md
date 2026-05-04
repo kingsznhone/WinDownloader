@@ -18,6 +18,7 @@ src/POC/
 ├── POC.csproj
 ├── Program.cs
 ├── README.md
+├── Oscdimg/                            # POC 本地 oscdimg 工具和启动映像
 └── Wim/
     ├── Interfaces/
     │   ├── IEsdToIsoPipelineService.cs
@@ -32,7 +33,6 @@ src/POC/
     └── Services/
         ├── EsdToIsoPipelineService.cs
         ├── OscdimgIsoCreationService.cs
-        ├── DiscUtilsIsoCreationService.cs
         ├── WimProcessingService.cs
         └── ...
 ```
@@ -42,7 +42,7 @@ src/POC/
 | 依赖 | 用途 |
 |------|------|
 | ManagedWimLib | WIM 读取、提取、导出 |
-| DiscUtils | 纯托管 ISO 创建实验后端 |
+| Oscdimg 工具目录 | UDF ISO 创建；`POC.csproj` 会复制到输出目录 |
 
 ## Program.cs 实验入口
 
@@ -58,7 +58,7 @@ src/POC/
 
 ```powershell
 dotnet run --project .\src\POC\POC.csproj -- --inspect-only
-dotnet run --project .\src\POC\POC.csproj -- --install-format esd --iso-backend both
+dotnet run --project .\src\POC\POC.csproj -- --install-format esd --iso-backend oscdimg
 dotnet run --project .\src\POC\POC.csproj -- --install-format both --iso-backend oscdimg --output-root D:\IsoPoc
 ```
 
@@ -69,7 +69,7 @@ dotnet run --project .\src\POC\POC.csproj -- --install-format both --iso-backend
 | `--source` | ESD 路径 | 硬编码实验 ESD | 覆盖默认源文件 |
 | `--output-root` | 目录 | 源 ESD 同级 `poc-iso-output` | POC run 输出根目录 |
 | `--install-format` | `esd` / `wim` / `both` | `esd` | 生成 `install.esd`、`install.wim` 或两者 |
-| `--iso-backend` | `oscdimg` / `discutils` / `both` | `both` | 选择 ISO 创建后端 |
+| `--iso-backend` | `oscdimg` | `oscdimg` | 选择 ISO 创建后端；当前仅保留 oscdimg |
 | `--volume-label` | 卷标 | `ESD_ISO` | ISO 卷标 |
 | `--inspect-only` | 无 | 关闭 | 只枚举映像和计划，不转换 |
 
@@ -95,8 +95,7 @@ dotnet run --project .\src\POC\POC.csproj -- --install-format both --iso-backend
 
 | 后端 | 定位 | 注意事项 |
 |------|------|----------|
-| `oscdimg` | 兼容性目标 | 需要 Windows ADK；使用 BIOS + UEFI boot data；缺工具时只标记后端 skipped，不删除中间产物 |
-| `DiscUtils` | 纯托管实验对照 | 使用 `CDBuilder`；不承诺等价于 ADK 的 UDF/双启动 ISO；遇到超过 4 GiB 的单文件会跳过，避免 ISO9660/Joliet 长度截断 |
+| `oscdimg` | 兼容性目标 | POC 优先调用输出目录中的 `Oscdimg\oscdimg.exe`；使用 UDF 1.02 和 BIOS + UEFI boot data；缺工具时只标记后端 skipped，不删除中间产物 |
 
 每次运行会生成：
 
@@ -105,8 +104,7 @@ dotnet run --project .\src\POC\POC.csproj -- --install-format both --iso-backend
 | `staging\` | ISO 根目录，中间文件保留供探索 |
 | `staging\sources\boot.wim` | 由 image 2+3 生成 |
 | `staging\sources\install.esd` / `install.wim` | 由 image 4..n 生成 |
-| `*-oscdimg.iso` | oscdimg 后端产物 |
-| `*-discutils.iso` | DiscUtils 后端产物 |
+| `oscdimg.iso` | oscdimg 后端产物；文件名保持较短以兼容 oscdimg 2.56 的目标路径限制 |
 | `events.ndjson` | 阶段和进度事件流 |
 | `manifest.json` | 输入、输出、文件大小、后端结果和 warning |
 | `summary.txt` | 人类可读摘要 |
@@ -138,6 +136,6 @@ Task ExportImagesAsync(WimMultiImageExportRequest request,
 ## 后续验证方向
 
 - 验证 `boot.wim` 和 `install.esd/install.wim` 的映像索引、boot 标记、压缩和文件大小。
-- 对比 `oscdimg` 与 `DiscUtils` 产物的挂载结果和 UEFI 虚拟机启动结果。
+- 验证 oscdimg 产物的挂载结果和 UEFI/BIOS 虚拟机启动结果。
 - 验证大型镜像处理的进度、取消、临时文件保留和错误提示。
 - POC 跑通后再决定是否以新模块形式回迁主项目。

@@ -6,7 +6,7 @@
 
 WindowsImageDownloader 是一个基于 WinUI 3 + .NET 10 的 Windows 安装映像下载工具。主应用当前只负责：从 Microsoft Update Catalog 获取产品目录、筛选 ESD 文件、多线程断点续传下载、SHA-256 校验、SQLite 任务持久化和 WinUI 下载任务管理。
 
-WIM/ISO 后处理已从主项目剥离到 `src/POC`，用于后续概念验证。主项目不应重新引入 `ManagedWimLib`、`DiscUtils`、`OutputFormat` 或 WIM/ISO 转换状态，除非用户明确要求重新设计该功能。
+WIM/ISO 后处理已从主项目剥离到 `src/POC`，用于后续概念验证。主项目不应重新引入 `ManagedWimLib`、`oscdimg`、`OutputFormat` 或 WIM/ISO 转换状态，除非用户明确要求重新设计该功能。
 
 ## 文档体系
 

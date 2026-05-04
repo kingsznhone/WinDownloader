@@ -8,8 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DiscUtils" Version="0.16.13" />
     <PackageReference Include="ManagedWimLib" Version="2.6.0" />
+    <PackageReference Include="System.CommandLine" Version="3.0.0-preview.3.26207.106" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Oscdimg\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

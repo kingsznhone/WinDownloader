@@ -4,7 +4,7 @@
 
 主 WinUI 应用是 ESD-only 下载器：产品目录获取、ESD 下载、SHA-256 校验、SQLite 任务持久化、下载任务 UI 管理。WIM/ISO 后处理已迁移到 `src/POC`，只用于概念验证。
 
-不要在主项目中重新引入 `OutputFormat`、WIM/ISO 转换状态、`ManagedWimLib`、`DiscUtils` 或转换管道，除非用户明确要求重新设计主应用后处理功能。
+不要在主项目中重新引入 `OutputFormat`、WIM/ISO 转换状态、`ManagedWimLib`、`oscdimg` 或转换管道，除非用户明确要求重新设计主应用后处理功能。
 
 ## 技术栈
 
@@ -16,7 +16,7 @@
 - 数据库: Microsoft.Data.Sqlite
 - 设置存储: JSON 文件
 - 打包: 非 MSIX 解包部署 (`WindowsPackageType=None`)
-- POC 后处理: `src/POC` 使用 ManagedWimLib / DiscUtils
+- POC 后处理: `src/POC` 使用 ManagedWimLib / oscdimg
 
 ## 项目结构
 

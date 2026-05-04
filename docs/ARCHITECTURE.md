@@ -4,7 +4,7 @@
 
 WindowsImageDownloader 是基于 WinUI 3 (Windows App SDK) 和 .NET 10 的 Windows 安装映像下载工具。主应用当前聚焦 ESD 下载：从 Microsoft Update Catalog 获取产品目录，筛选 ESD 文件，多线程断点续传下载，并在完成后执行 SHA-256 校验。
 
-WIM/ISO 后处理已迁移到 `src/POC`。主应用不再包含格式选择、转换管道、WIM/ISO 状态或 ManagedWimLib/DiscUtils 依赖。
+WIM/ISO 后处理已迁移到 `src/POC`。主应用不再包含格式选择、转换管道、WIM/ISO 状态或 ManagedWimLib/oscdimg 依赖。
 
 ## 技术栈
 
@@ -18,7 +18,7 @@ WIM/ISO 后处理已迁移到 `src/POC`。主应用不再包含格式选择、�
 | 数据库 | Microsoft.Data.Sqlite |
 | 设置存储 | JSON 文件 |
 | 打包 | 非 MSIX 解包部署 (`WindowsPackageType=None`) |
-| POC 后处理 | ManagedWimLib、DiscUtils |
+| POC 后处理 | ManagedWimLib、oscdimg |
 
 ## 解决方案结构
 
@@ -134,4 +134,4 @@ SelectionPage
 
 ## POC 边界
 
-`src/POC` 是后处理实验区。它可以引用 ManagedWimLib 和 DiscUtils，也可以探索 ESD/WIM/ISO 转换流程；这些依赖和模型不属于主 WinUI 应用的运行路径。
+`src/POC` 是后处理实验区。它可以引用 ManagedWimLib 并调用本地 oscdimg 工具目录探索 ESD/WIM/ISO 转换流程；这些依赖和模型不属于主 WinUI 应用的运行路径。

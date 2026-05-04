@@ -23,7 +23,7 @@
 | UI 层 | [MODULE_UI.md](MODULE_UI.md) | 修改 WinUI 页面、控件、ViewModel、导航或绑定线程时 |
 | 设置 | [MODULE_SETTINGS.md](MODULE_SETTINGS.md) | 修改 IAppSettings、设置默认值、设置页或 JSON 存储时 |
 | 打包发布 | [MODULE_PACKAGING.md](MODULE_PACKAGING.md) | 修改 csproj、NuGet、Windows App SDK、发布参数时 |
-| POC 实验 | [MODULE_POC.md](MODULE_POC.md) | 修改 `src/POC`、ManagedWimLib、DiscUtils、WIM/ISO 实验时 |
+| POC 实验 | [MODULE_POC.md](MODULE_POC.md) | 修改 `src/POC`、ManagedWimLib、oscdimg、WIM/ISO 实验时 |
 
 ## 推荐阅读路径
 
@@ -59,7 +59,7 @@ flowchart TD
 
 | 范围 | 允许内容 | 禁止混入 |
 |------|----------|----------|
-| `src/WindowsImageDownloader` | 目录获取、ESD 下载、SHA-256 校验、任务缓存、WinUI 管理 | `OutputFormat`、ManagedWimLib、DiscUtils、WIM/ISO 转换状态和转换管道 |
+| `src/WindowsImageDownloader` | 目录获取、ESD 下载、SHA-256 校验、任务缓存、WinUI 管理 | `OutputFormat`、ManagedWimLib、oscdimg、WIM/ISO 转换状态和转换管道 |
 | `src/POC` | WIM/ISO 后处理概念验证、实验性模型和服务 | 主应用未设计完成的 UI、缓存 schema 和任务状态承诺 |
 
 ### 2. 阅读文档和源码
@@ -97,7 +97,7 @@ flowchart TD
 | ViewModel、页面、控件、绑定线程变化 | [MODULE_UI.md](MODULE_UI.md)，必要时更新对应业务模块文档 |
 | 设置项、默认值、范围、JSON key 变化 | [MODULE_SETTINGS.md](MODULE_SETTINGS.md) |
 | NuGet、TargetFramework、Windows App SDK、发布配置变化 | [MODULE_PACKAGING.md](MODULE_PACKAGING.md)，必要时更新 [ARCHITECTURE.md](ARCHITECTURE.md) |
-| POC 后处理实验、ManagedWimLib、DiscUtils 变化 | [MODULE_POC.md](MODULE_POC.md)、[MODULE_PACKAGING.md](MODULE_PACKAGING.md) |
+| POC 后处理实验、ManagedWimLib、oscdimg 变化 | [MODULE_POC.md](MODULE_POC.md)、[MODULE_PACKAGING.md](MODULE_PACKAGING.md) |
 
 ### 5. 验证
 

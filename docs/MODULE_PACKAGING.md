@@ -48,7 +48,7 @@ src/WindowsImageDownloader/bin/Release/net10.0-windows10.0.26100.0/win-x64/publi
 | Microsoft.Windows.SDK.BuildTools | Windows SDK 构建工具 |
 | Microsoft.WindowsAppSDK | WinUI 3 / Windows App SDK |
 
-主项目不引用 ManagedWimLib 或 DiscUtils。
+主项目不引用 ManagedWimLib、oscdimg 或 WIM/ISO 后处理依赖。
 
 ## POC 依赖
 
@@ -57,7 +57,7 @@ src/WindowsImageDownloader/bin/Release/net10.0-windows10.0.26100.0/win-x64/publi
 | 依赖 | 用途 |
 |------|------|
 | ManagedWimLib | WIM 读取、导出、提取实验 |
-| DiscUtils | ISO 创建实验预留 |
+| Oscdimg 工具目录 | POC ISO 创建实验；构建时复制到 POC 输出目录 |
 
 ## 安装要求
 
