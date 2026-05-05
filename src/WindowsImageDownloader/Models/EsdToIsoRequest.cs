@@ -1,6 +1,6 @@
 using ManagedWimLib;
 
-namespace POC.Models;
+namespace WindowsImageDownloader.Models;
 
 public sealed record EsdToIsoRequest(
     string SourceEsdPath,

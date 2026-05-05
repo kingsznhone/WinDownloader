@@ -1,8 +1,8 @@
 # WindowsImageDownloader POC
 
-This project is the concept-verification area for image post-processing work that is intentionally kept outside the WinUI app.
+This project is the console validation and comparison host for the ESD-to-ISO pipeline. The WinUI app now has the product-facing ISO conversion entry; this POC remains useful for debugging progress mapping, compression choices, staging cleanup, and oscdimg output without launching the UI.
 
-The POC is now shaped like the future WinUI post-processing service:
+The POC is shaped like the WinUI conversion service stack:
 
 - `Program.cs` is a minimal console host. It parses a small option set, creates services, subscribes to task snapshots, and calls `EsdToIsoConversionService.ConvertAsync()`.
 - `EsdToIsoConversionService` owns the full ESD-to-ISO workflow and publishes immutable `EsdToIsoTaskSnapshot` updates through `ProgressChanged`.
@@ -16,7 +16,9 @@ Useful commands:
 dotnet run --project .\src\POC\POC.csproj -- --help
 dotnet run --project .\src\POC\POC.csproj --
 dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --output-root D:\IsoPoc
-dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --delete-intermediate
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --delete-staging
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --install-compression LZX
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --output-root D:\IsoPoc --iso-only
 ```
 
 Supported options:
@@ -24,24 +26,25 @@ Supported options:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--source <path>` | local hardcoded test ESD | Source ESD path |
-| `--output-root <path>` | `<source directory>\poc-iso-output` | Root folder for run outputs |
+| `--output-root <path>` | `<source directory>\poc-iso-staging` | Staging root and console log folder |
 | `--volume-label <label>` | `ESD_ISO` | ISO volume label |
-| `--keep-intermediate` | enabled | Keep staging files after conversion |
-| `--delete-intermediate` | disabled | Delete staging files after a successful conversion |
+| `--delete-staging` | disabled | Delete staging files after a successful conversion |
+| `--install-compression <value>` | `LZMS` | Compression algorithm for `install.esd`; use `LZX` or `LZMS` |
+| `--iso-only` | disabled | Skip WIM/ESD building and only package an existing staging directory |
 
 Fixed pipeline mapping:
 
 - ESD image 1 -> ISO staging root.
 - ESD image 2 + 3 -> `sources\boot.wim` with image 3 marked bootable.
 - ESD image 4+ -> `sources\install.esd`.
-- `oscdimg` creates `oscdimg.iso` in the run directory.
+- `oscdimg` creates `<source file name>.iso` beside the source ESD.
 
 Each run writes:
 
-- `staging\` with the temporary ISO file tree.
+- `staging\` under `--output-root` with the temporary ISO file tree.
 - `staging\sources\boot.wim`.
 - `staging\sources\install.esd`.
-- `oscdimg.iso`.
-- `console-*.log` in the output root.
+- `<source file name>.iso` beside the source ESD.
+- `console-*.log` in `--output-root`.
 
-The POC no longer exposes install format selection, ISO backend selection, or default `events.ndjson`/manifest/summary logging. The main `WindowsImageDownloader` app should still stay focused on catalog browsing, ESD download, SHA-256 verification, and task management until post-processing is deliberately migrated.
+The POC no longer exposes install format selection, ISO backend selection, or default `events.ndjson`/manifest/summary logging. The main `WindowsImageDownloader` app owns the user-facing download and ISO conversion flow; POC-only diagnostic behavior should not be treated as a UI product contract.

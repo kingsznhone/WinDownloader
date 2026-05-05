@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using ManagedWimLib;
-using POC.Interfaces;
-using POC.Models;
+using WindowsImageDownloader.Interfaces;
+using WindowsImageDownloader.Models;
 
-namespace POC.Services;
+namespace WindowsImageDownloader.Services;
 
 public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
 {
@@ -73,10 +73,7 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
             if (!session.IsoResult.Succeeded)
                 return session.Finish(false, session.IsoResult.ErrorMessage ?? "ISO Create failed.");
 
-            var result = session.Finish(true, null);
-            if (!request.KeepIntermediateFiles)
-                TryDeleteDirectory(session.StagingDirectory);
-            return result;
+            return session.Finish(true, null);
         }
         catch (OperationCanceledException)
         {
@@ -101,6 +98,11 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
                 session.Publish(EsdToIsoTaskState.Failed, EsdToIsoStage.Failed, session.CurrentProgress, errorMessage: ex.Message, force: true);
                 throw;
             }
+        }
+        finally
+        {
+            if (!request.KeepIntermediateFiles)
+                TryDeleteDirectory(session.StagingDirectory);
         }
     }
 
@@ -203,9 +205,7 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
         try
         {
             if (Directory.Exists(path))
-            {
                 Directory.Delete(path, recursive: true);
-            }
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }

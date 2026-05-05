@@ -33,6 +33,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         orchestrator.TaskAdded   += OnTaskAdded;
         orchestrator.TaskRemoved += OnTaskRemoved;
         orchestrator.TaskChanged += OnTaskChanged;
+        orchestrator.ActiveTaskCountChanged += OnActiveTaskCountChanged;
 
         UpdatePendingCount();
     }
@@ -46,7 +47,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
     private int _pendingTaskCount;
 
-    /// <summary>Count of tasks not yet in a terminal state (Completed / Failed).</summary>
+    /// <summary>Count of active download or ISO conversion workers.</summary>
     public int PendingTaskCount
     {
         get => _pendingTaskCount;
@@ -57,7 +58,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         }
     }
 
-    /// <summary>Visibility of the InfoBadge; hidden when no tasks are pending.</summary>
+    /// <summary>Visibility of the InfoBadge; hidden when no task is active.</summary>
     public Visibility PendingTaskBadgeVisibility =>
         PendingTaskCount > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -83,10 +84,12 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
     private void OnTaskChanged(object? sender, DownloadTaskSnapshot e) =>
         _dispatcherQueue.TryEnqueue(UpdatePendingCount);
 
+    private void OnActiveTaskCountChanged(object? sender, EventArgs e) =>
+        _dispatcherQueue.TryEnqueue(UpdatePendingCount);
+
     private void UpdatePendingCount()
     {
-        PendingTaskCount = _orchestrator.Tasks.Count(
-            t => t.State is not TaskState.Completed and not TaskState.Failed);
+        PendingTaskCount = _orchestrator.ActiveTaskCount;
     }
 
     private void NotifyItemsStateChanged()
@@ -101,6 +104,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         _orchestrator.TaskAdded   -= OnTaskAdded;
         _orchestrator.TaskRemoved -= OnTaskRemoved;
         _orchestrator.TaskChanged -= OnTaskChanged;
+        _orchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
         foreach (var item in Items)
             item.Dispose();
     }

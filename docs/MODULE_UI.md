@@ -2,7 +2,7 @@
 
 ## 概述
 
-UI 层基于 WinUI 3 `NavigationView`，使用 CommunityToolkit.Mvvm 实现 MVVM。页面只暴露主应用当前支持的 ESD 下载体验：目录筛选、下载任务管理、设置。
+UI 层基于 WinUI 3 `NavigationView`，使用 CommunityToolkit.Mvvm 实现 MVVM。页面暴露当前主应用支持的体验：目录筛选、ESD 下载任务管理、完成后 ISO 转换入口和设置。
 
 ## 文件清单
 
@@ -69,11 +69,14 @@ DownloadTask.FromRawFile(group.File, group.Editions)
 |------|------|
 | `TaskAdded` | UI 线程插入 `DownloadTaskItemViewModel` |
 | `TaskRemoved` | UI 线程移除并 dispose 任务 VM |
-| `TaskChanged` | 更新未完成任务计数 |
+| `TaskChanged` | 将下载和 ISO 转换快照转发给对应 task item |
+| `ActiveTaskCountChanged` | 更新导航徽标计数 |
+
+`PendingTaskCount` 当前显示 active worker 数：正在下载、校验或转换 ISO 的 worker 会计入；仅排队等待下载槽或转换槽的任务不会计入。
 
 ## DownloadTaskItemViewModel
 
-职责：把 `DownloadTaskSnapshot` 转成 XAML 绑定属性，并暴露任务操作命令。
+职责：把 `DownloadTaskSnapshot` 转成 XAML 绑定属性，并暴露任务操作命令。下载快照和 ISO 转换快照都会先合并到 ViewModel，再通过 `DispatcherQueue.TryEnqueue` 应用到 UI 线程。
 
 | 状态属性 | 说明 |
 |----------|------|
@@ -83,15 +86,31 @@ DownloadTask.FromRawFile(group.File, group.Editions)
 | `IsCompleted` | 已完成 |
 | `IsFailed` | 失败 |
 | `ShowDownloadProgress` | 显示进度区 |
+| `ShowIsoProgress` | 显示 ISO 转换主/子进度区 |
 | `ShowActionBar` | 完成后显示操作区 |
+| `IsIsoConversionBusy` | ISO 转换已排队或正在运行 |
+| `IsoMainProgress` / `IsoSubProgress` | ISO 主进度和当前子步骤进度 |
+| `IsoMainStatusText` / `IsoSubStatusText` | ISO 主阶段文本和子阶段文本 |
 
 | 命令 | 说明 |
 |------|------|
 | `PauseCommand` | 暂停正在下载的任务 |
 | `ResumeCommand` | 恢复 queued 任务 |
 | `CancelCommand` | 取消、移除 queued/downloading/verifying/failed 任务 |
-| `DeleteCommand` | 删除 completed 任务和 ESD 文件 |
+| `ConvertToIsoCommand` | 完成下载后转换 ISO；若 ISO 已存在则打开 ISO 所在目录 |
+| `DeleteCommand` | 删除 completed 且没有 ISO 转换中的任务和 ESD 文件 |
 | `OpenDirectoryCommand` | 通过 `IDownloadTaskPathService` 打开输出目录 |
+
+`DownloadTaskItemControl.xaml` 在下载进度区之后显示 ISO 进度组：
+
+```text
+IsoMainStatusText
+IsoMainProgress
+IsoSubStatusText
+IsoSubProgress / IsIsoSubProgressIndeterminate
+```
+
+子进度优先使用 `EsdToIsoTaskSnapshot.IsoProgress.Percent` 或 `WimProgress.Percent`；当底层阶段没有百分比时使用不确定进度条。操作区包含删除、转换 ISO/打开 ISO 目录、打开 ESD 目录三个入口。
 
 ## SettingsViewModel
 
@@ -107,6 +126,7 @@ DownloadTask.FromRawFile(group.File, group.Editions)
 ## 注意事项
 
 - `DispatcherQueue.GetForCurrentThread()` 必须在 UI 线程调用。
-- `DownloadTaskItemViewModel` 会合并高频快照，避免每个进度事件都立即刷新 UI。
+- `DownloadTaskItemViewModel` 会合并高频下载和 ISO 快照，避免每个进度事件都立即刷新 UI。
 - 页面通过 `App.GetService<T>()` 获取 ViewModel。
-- UI 不提供 WIM/ISO 转换入口；相关实验只在 POC 项目中进行。
+- ISO 转换中不允许删除任务；`CanDelete` 会被 `IsIsoConversionBusy` 阻止。
+- 不在 UI 层拼路径；ESD、ISO、`.staging` 路径都来自 `IDownloadTaskPathService`。

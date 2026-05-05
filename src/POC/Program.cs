@@ -1,7 +1,7 @@
 using System.CommandLine;
 using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
+using ManagedWimLib;
 using POC.Models;
 using POC.Services;
 
@@ -14,44 +14,6 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
-        using var wimService = new WimProcessingService();
-        var images = await wimService.GetImagesAsync(DefaultSourceEsdPath).ConfigureAwait(false);
-
-        Console.WriteLine($"Found {images.Count} image(s) in: {Path.GetFileName(DefaultSourceEsdPath)}");
-        Console.WriteLine();
-        foreach (var img in images)
-        {
-            Console.WriteLine($"  [{img.Index,2}] {img.Title,-30}  {img.Subtitle}");
-        }
-        Console.WriteLine();
-
-        var outputRoot = Path.Combine(Path.GetDirectoryName(DefaultSourceEsdPath)!, "extracted");
-        Directory.CreateDirectory(outputRoot);
-
-        images = images.Take(3).ToList();
-        foreach (var image in images)
-        {
-            var destDir = Path.Combine(outputRoot, $"{image.Index}");
-            var prefix = $"[{image.Index}/{images.Count}] {image.Title}: ";
-
-            var progressRow = Console.CursorTop;
-            Console.Write(prefix);
-
-            await wimService.ExtractImageAsync(
-                new WimExtractRequest(DefaultSourceEsdPath, image.Index, destDir),
-                progress =>
-                {
-                        PrintWimProgress(progressRow, progress);
-                },
-                CancellationToken.None).ConfigureAwait(false);
-
-            Console.WriteLine();
-        }
-
-        Console.WriteLine();
-        Console.WriteLine($"All images extracted to: {outputRoot}");
-        return 0;
-
         var sourceOption = new Option<string>("--source")
         {
             Description = "Source ESD path. Defaults to the current hardcoded test ESD.",
@@ -69,59 +31,52 @@ internal static class Program
             DefaultValueFactory = _ => "ESD_ISO"
         };
 
-        var keepIntermediateOption = new Option<bool>("--keep-intermediate")
+        var deleteIntermediateOption = new Option<bool>("--delete-staging")
         {
-            Description = "Keep staging files after conversion. This is the default."
+            Description = "Delete staging files after a successful conversion. Defaults to keeping them."
         };
 
-        var deleteIntermediateOption = new Option<bool>("--delete-intermediate")
+        var installCompressionOption = new Option<CompressionType>("--install-compression")
         {
-            Description = "Delete staging files after a successful conversion."
+            Description = "Compression algorithm for install.esd/wim. LZX or LZMS (default).",
+            DefaultValueFactory = _ => CompressionType.LZMS
         };
 
-        var rootCommand = new RootCommand("WindowsImageDownloader POC - ESD to ISO conversion service");
-        rootCommand.Add(sourceOption);
-        rootCommand.Add(outputRootOption);
-        rootCommand.Add(volumeLabelOption);
-        rootCommand.Add(keepIntermediateOption);
-        rootCommand.Add(deleteIntermediateOption);
+        var isoOnlyOption = new Option<bool>("--iso-only")
+        {
+            Description = "Skip WIM/ESD building stages and only run ISO packaging on the existing staging directory. Useful for testing ISO progress reporting."
+        };
+
+        var rootCommand = new RootCommand("WindowsImageDownloader POC - ESD to ISO conversion service")
+        {
+            sourceOption,
+            outputRootOption,
+            volumeLabelOption,
+            deleteIntermediateOption,
+            installCompressionOption,
+            isoOnlyOption
+        };
 
         rootCommand.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             var source = parseResult.GetValue(sourceOption)!;
             var outputRoot = parseResult.GetValue(outputRootOption);
             var volumeLabel = parseResult.GetValue(volumeLabelOption)!;
-            var keepIntermediate = parseResult.GetValue(keepIntermediateOption);
-            var deleteIntermediate = parseResult.GetValue(deleteIntermediateOption);
-            var keepIntermediateFiles = keepIntermediate || !deleteIntermediate;
+            var keepIntermediateFiles = !parseResult.GetValue(deleteIntermediateOption);
+            var installCompression = parseResult.GetValue(installCompressionOption);
+            var isoOnly = parseResult.GetValue(isoOnlyOption);
 
             var sourcePath = Path.GetFullPath(source);
-            var resolvedOutputRoot = string.IsNullOrWhiteSpace(outputRoot)
-                ? Path.Combine(Path.GetDirectoryName(sourcePath) ?? Environment.CurrentDirectory, "poc-iso-output")
+            var resolvedStagingRoot = string.IsNullOrWhiteSpace(outputRoot)
+                ? Path.Combine(Path.GetDirectoryName(sourcePath) ?? Environment.CurrentDirectory, "poc-iso-staging")
                 : Path.GetFullPath(outputRoot);
-            Directory.CreateDirectory(resolvedOutputRoot);
+            Directory.CreateDirectory(resolvedStagingRoot);
 
             var consoleLogPath = Path.Combine(
-                resolvedOutputRoot,
+                resolvedStagingRoot,
                 $"console-{Path.GetFileNameWithoutExtension(sourcePath)}-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.log");
 
-            var request = new EsdToIsoRequest(
-                sourcePath,
-                resolvedOutputRoot,
-                volumeLabel,
-                keepIntermediateFiles);
-
             using var consoleLog = ConsoleLogScope.Start(consoleLogPath);
-
-            Console.WriteLine("WindowsImageDownloader POC");
-            Console.WriteLine("ESD to ISO conversion service experiment.");
-            Console.WriteLine();
-            Console.WriteLine($"Source ESD: {request.SourceEsdPath}");
-            Console.WriteLine($"Output root: {request.OutputRoot}");
-            Console.WriteLine($"Console log: {consoleLogPath}");
-            Console.WriteLine($"Volume label: {request.VolumeLabel}");
-            Console.WriteLine($"Keep intermediate files: {request.KeepIntermediateFiles}");
-            Console.WriteLine();
 
             using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
@@ -133,6 +88,78 @@ internal static class Program
 
             try
             {
+                if (isoOnly)
+                {
+                    var stagingDirectory = Path.Combine(resolvedStagingRoot, "staging");
+                    var isoPath = Path.Combine(
+                        Path.GetDirectoryName(sourcePath)!,
+                        Path.GetFileNameWithoutExtension(sourcePath) + ".iso");
+
+                    Console.WriteLine("WindowsImageDownloader POC");
+                    Console.WriteLine("ISO-only mode: skipping WIM/ESD stages.");
+                    Console.WriteLine();
+                    Console.WriteLine($"Staging directory: {stagingDirectory}");
+                    Console.WriteLine($"ISO output: {isoPath}");
+                    Console.WriteLine($"Volume label: {volumeLabel}");
+                    Console.WriteLine($"Console log: {consoleLogPath}");
+                    Console.WriteLine();
+
+                    var stopwatch = Stopwatch.StartNew();
+                    var isoService = new OscdimgIsoCreationService();
+                    var isoRequest = new IsoCreationRequest(stagingDirectory, isoPath, volumeLabel)
+                    {
+                        OnProgress = p =>
+                        {
+                            var elapsed = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+                            Console.WriteLine($"{elapsed} {p.Percent,5:0.0}% CreatingIso");
+                        }
+                    };
+
+                    var isoResult = await isoService.CreateIsoAsync(isoRequest, linkedCancellation.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+
+                    Console.WriteLine();
+                    Console.WriteLine(isoResult.Succeeded ? "Completed." : "Failed.");
+                    Console.WriteLine($"ISO: {isoResult.OutputIsoPath}");
+                    Console.WriteLine($"Duration: {isoResult.Duration}");
+                    if (!isoResult.Succeeded)
+                        Console.Error.WriteLine($"Error: {isoResult.ErrorMessage}");
+                    foreach (var w in isoResult.Warnings)
+                        Console.WriteLine($"Warning: {w}");
+
+                    // Diagnostic: dump raw oscdimg stdout to reveal control characters
+                    var raw = isoResult.StandardOutput;
+                    var rawErr = isoResult.StandardError;
+                    Console.WriteLine();
+                    Console.WriteLine($"--- oscdimg stdout ({raw.Length} chars) ---");
+                    Console.WriteLine(raw.Replace("\b", "[BS]").Replace("\r", "[CR]").Replace("\n", "[LF]\n"));
+                    Console.WriteLine($"--- oscdimg stderr ({rawErr.Length} chars) ---");
+                    Console.WriteLine(rawErr.Replace("\b", "[BS]").Replace("\r", "[CR]").Replace("\n", "[LF]\n"));
+                    Console.WriteLine();
+                    Console.WriteLine("--- hex dump stdout (first 256 chars) ---");
+                    for (int i = 0; i < Math.Min(raw.Length, 256); i++)
+                    {
+                        Console.Write($"{(int)raw[i]:X2} ");
+                        if ((i + 1) % 16 == 0) Console.WriteLine();
+                    }
+                    Console.WriteLine();
+                    Console.WriteLine("--- hex dump stderr (first 256 chars) ---");
+                    for (int i = 0; i < Math.Min(rawErr.Length, 256); i++)
+                    {
+                        Console.Write($"{(int)rawErr[i]:X2} ");
+                        if ((i + 1) % 16 == 0) Console.WriteLine();
+                    }
+                    Console.WriteLine();
+
+                    return isoResult.Succeeded ? 0 : 1;
+                }
+
+                var request = new EsdToIsoRequest(
+                    sourcePath,
+                    resolvedStagingRoot,
+                    volumeLabel,
+                    keepIntermediateFiles,
+                    installCompression);
                 using var wimService = new WimProcessingService();
                 var conversionService = new EsdToIsoConversionService(wimService, new OscdimgIsoCreationService());
                 conversionService.ProgressChanged += OnProgressChanged;
@@ -192,7 +219,6 @@ internal static class Program
     private static void PrintResult(EsdToIsoResult result)
     {
         Console.WriteLine(result.Succeeded ? "Completed." : "Failed.");
-        Console.WriteLine($"Run directory: {result.RunDirectory}");
         Console.WriteLine($"Staging: {result.StagingDirectory}");
         Console.WriteLine($"boot.wim: {result.BootWimPath}");
         Console.WriteLine($"install.esd: {result.InstallEsdPath}");
@@ -218,9 +244,53 @@ internal static class Program
     {
         var percent = $"{snapshot.Progress * 100,5:0.0}%";
         var elapsed = snapshot.Elapsed.ToString(@"hh\:mm\:ss");
-        var file = string.IsNullOrWhiteSpace(snapshot.CurrentFile) ? string.Empty : $" ({Path.GetFileName(snapshot.CurrentFile)})";
-        var nested = snapshot.WimProgress?.Percent is null ? string.Empty : $" WIM {snapshot.WimProgress.Percent.Value:0.0}%";
-        return $"{elapsed} {percent} {snapshot.State}/{snapshot.Stage}: {snapshot.StatusText}{nested}{file}";
+        var details = BuildSnapshotDetails(snapshot);
+        return $"{elapsed} {percent} {snapshot.State}/{snapshot.Stage}: {details}";
+    }
+
+    private static string BuildSnapshotDetails(EsdToIsoTaskSnapshot snapshot)
+    {
+        var file = !string.IsNullOrWhiteSpace(snapshot.CurrentFile)
+            ? $" ({Path.GetFileName(snapshot.CurrentFile)})"
+            : string.Empty;
+
+        if (snapshot.WimProgress is { } wim)
+        {
+            return wim.Stage switch
+            {
+                WimOperationStage.Extracting => wim.Percent.HasValue
+                    ? $"正在提取映像 WIM {wim.Percent.Value:0.0}%{file}"
+                    : $"正在提取映像{file}",
+                WimOperationStage.Writing => wim.Percent.HasValue
+                    ? $"正在写入映像 WIM {wim.Percent.Value:0.0}% ({wim.CurrentItem})"
+                    : $"正在写入映像{file}",
+                WimOperationStage.Verifying => wim.Percent.HasValue
+                    ? $"正在校验数据流 WIM {wim.Percent.Value:0.0}%"
+                    : $"正在校验数据流{file}",
+                WimOperationStage.Metadata => !string.IsNullOrWhiteSpace(wim.CurrentItem)
+                    ? $"正在处理元数据 ({wim.CurrentItem})"
+                    : "正在处理元数据",
+                WimOperationStage.Completed => $"完成 WIM 100.0%{file}",
+                _ => $"{wim.Stage}{file}"
+            };
+        }
+
+        return snapshot.Stage switch
+        {
+            EsdToIsoStage.Preparing => $"正在清理并准备 staging 目录{file}",
+            EsdToIsoStage.InspectingSource => $"正在读取 ESD 映像信息{file}",
+            EsdToIsoStage.ApplyingSetupMedia => $"正在展开 image 1 到 ISO staging{file}",
+            EsdToIsoStage.BuildingBootWim => $"正在生成 boot.wim{file}",
+            EsdToIsoStage.BuildingInstallImage => $"正在生成 install.esd{file}",
+            EsdToIsoStage.CreatingIso => snapshot.IsoProgress is not null
+                ? $"正在创建 ISO {snapshot.IsoProgress.Percent:0}%{file}"
+                : $"正在调用 oscdimg 创建 ISO{file}",
+            EsdToIsoStage.Completed => $"ESD 到 ISO 转换完成{file}",
+            EsdToIsoStage.Failed => !string.IsNullOrWhiteSpace(snapshot.ErrorMessage)
+                ? $"ESD 到 ISO 转换失败: {snapshot.ErrorMessage}"
+                : "ESD 到 ISO 转换失败",
+            _ => $"{snapshot.Stage}{file}"
+        };
     }
 
     private sealed class ConsoleLogScope : IDisposable

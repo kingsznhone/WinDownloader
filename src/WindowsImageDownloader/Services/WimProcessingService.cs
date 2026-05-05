@@ -1,9 +1,9 @@
 using ManagedWimLib;
-using POC.Interfaces;
-using POC.Models;
+using WindowsImageDownloader.Interfaces;
+using WindowsImageDownloader.Models;
 using ManagedWim = ManagedWimLib.Wim;
 
-namespace POC.Services;
+namespace WindowsImageDownloader.Services;
 
 /// <summary>
 /// Singleton Only - 该服务内部维护了一个全局的 WIM 库实例，并使用信号量来确保同一时间只有一个操作在进行，以避免线程安全问题。
@@ -26,7 +26,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(imagePath, nameof(imagePath));
         if (!File.Exists(imagePath))
-            throw new FileNotFoundException($"File does not exist: {imagePath}", imagePath);
+            throw new FileNotFoundException($"文件不存在: {imagePath}", imagePath);
         ThrowIfDisposed();
 
         await _operationLock.WaitAsync(cancellationToken);
@@ -64,9 +64,9 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SourceImagePath, nameof(request.SourceImagePath));
         if (!File.Exists(request.SourceImagePath))
-            throw new FileNotFoundException($"File does not exist: {request.SourceImagePath}", request.SourceImagePath);
+            throw new FileNotFoundException($"文件不存在: {request.SourceImagePath}", request.SourceImagePath);
         if (request.ImageIndex < 1)
-            throw new ArgumentOutOfRangeException(nameof(request.ImageIndex), request.ImageIndex, "WIM image index starts from 1.");
+            throw new ArgumentOutOfRangeException(nameof(request.ImageIndex), request.ImageIndex, "WIM 映像索引从 1 开始。");
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationDirectory, nameof(request.DestinationDirectory));
 
         ThrowIfDisposed();
@@ -103,12 +103,12 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SourceImagePath, nameof(request.SourceImagePath));
         if (!File.Exists(request.SourceImagePath))
-            throw new FileNotFoundException($"File does not exist: {request.SourceImagePath}", request.SourceImagePath);
+            throw new FileNotFoundException($"文件不存在: {request.SourceImagePath}", request.SourceImagePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationImagePath, nameof(request.DestinationImagePath));
 
         if (request.Images.Count == 0)
         {
-            throw new ArgumentException("At least one image is required for export.", nameof(request.Images));
+            throw new ArgumentException("至少需要一个待导出的映像。", nameof(request.Images));
         }
 
         ThrowIfDisposed();

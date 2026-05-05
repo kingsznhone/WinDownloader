@@ -45,6 +45,11 @@ public interface ITaskOrchestratorService : IHostedService
     /// </summary>
     Task<TaskOperationResult> CancelAsync(string sha256, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Queues ISO conversion for a completed ESD download task.
+    /// </summary>
+    Task<TaskOperationResult> ConvertToIsoAsync(string sha256, CancellationToken cancellationToken = default);
+
     // ── Removal ────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -61,6 +66,11 @@ public interface ITaskOrchestratorService : IHostedService
     /// </summary>
     IReadOnlyList<DownloadTask> Tasks { get; }
 
+    /// <summary>
+    /// Number of currently active download or ISO conversion workers.
+    /// </summary>
+    int ActiveTaskCount { get; }
+
     // ── Events ────────────────────────────────────────────────────────────────
 
     /// <summary>Raised on the calling thread when a new task is added to <see cref="Tasks"/>.</summary>
@@ -71,4 +81,7 @@ public interface ITaskOrchestratorService : IHostedService
 
     /// <summary>Raised when task state or progress changes. Handlers may be called from background threads.</summary>
     event EventHandler<DownloadTaskSnapshot> TaskChanged;
+
+    /// <summary>Raised when <see cref="ActiveTaskCount"/> changes. Handlers may be called from background threads.</summary>
+    event EventHandler? ActiveTaskCountChanged;
 }

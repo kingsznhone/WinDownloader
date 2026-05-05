@@ -13,6 +13,12 @@ public interface IDownloadTaskPathService
     /// <summary>Resolves the final ESD file path for <paramref name="task"/>.</summary>
     string ResolveEsdPath(DownloadTask task);
 
+    /// <summary>Resolves the final ISO file path for <paramref name="task"/>.</summary>
+    string ResolveIsoPath(DownloadTask task);
+
+    /// <summary>Resolves the ISO conversion staging directory for <paramref name="task"/>.</summary>
+    string ResolveIsoStagingDirectory(DownloadTask task);
+
     /// <summary>Resolves the Downloader temporary file path for <paramref name="task"/>.</summary>
     string ResolveTemporaryDownloadPath(DownloadTask task);
 }

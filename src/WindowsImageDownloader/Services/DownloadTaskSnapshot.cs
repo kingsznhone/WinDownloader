@@ -8,13 +8,17 @@ public sealed record DownloadTaskSnapshot(
     double Progress,
     long SpeedBytesPerSecond,
     string StatusText,
-    string? ErrorMessage)
+    string? ErrorMessage,
+    EsdToIsoTaskSnapshot? IsoConversionSnapshot = null)
 {
-    public static DownloadTaskSnapshot FromTask(DownloadTask task) => new(
+    public static DownloadTaskSnapshot FromTask(
+        DownloadTask task,
+        EsdToIsoTaskSnapshot? isoConversionSnapshot = null) => new(
         task.Sha256,
         task.State,
         task.Progress,
         task.SpeedBytesPerSecond,
         task.StatusText,
-        task.ErrorMessage);
+        task.ErrorMessage,
+        isoConversionSnapshot);
 }

@@ -43,6 +43,10 @@ public partial class App : Application
         builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<DownloadPageViewModel>();
 
+        builder.Services.AddSingleton<IWimProcessingService, WimProcessingService>();
+        builder.Services.AddSingleton<IIsoCreationService, OscdimgIsoCreationService>();
+        builder.Services.AddSingleton<IEsdToIsoConversionService, EsdToIsoConversionService>();
+
         // IHostedService registration order determines startup order:
         // 1. CacheService.StartAsync → EnsureSchemaAsync (must run before tasks are loaded)
         // 2. TaskOrchestratorService.StartAsync → LoadTasks

@@ -29,6 +29,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Row 0: Title + badge tags (same layout as RawFileItemControl) -->
@@ -179,8 +180,52 @@
                     Visibility="{Binding HasStatusText, Converter={StaticResource BoolToVisibilityConverter}}" />
             </Grid>
 
-            <!-- Row 4: Operation and error messages -->
-            <StackPanel Grid.Row="4" Spacing="4">
+            <!-- Row 4: ISO conversion progress -->
+            <Grid
+                Grid.Row="4"
+                RowSpacing="6"
+                Visibility="{Binding ShowIsoProgress, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock
+                    Grid.Row="0"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="{Binding IsoMainStatusText}"
+                    TextTrimming="CharacterEllipsis" />
+
+                <ProgressBar
+                    Grid.Row="1"
+                    Minimum="0"
+                    Maximum="1"
+                    Value="{Binding IsoMainProgress}"
+                    Height="6" />
+
+                <TextBlock
+                    Grid.Row="2"
+                    FontSize="11"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="{Binding IsoSubStatusText}"
+                    TextTrimming="CharacterEllipsis"
+                    Visibility="{Binding HasIsoSubStatusText, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <ProgressBar
+                    Grid.Row="3"
+                    Minimum="0"
+                    Maximum="1"
+                    Value="{Binding IsoSubProgress}"
+                    IsIndeterminate="{Binding IsIsoSubProgressIndeterminate}"
+                    Height="4" />
+            </Grid>
+
+            <!-- Row 5: Operation and error messages -->
+            <StackPanel Grid.Row="5" Spacing="4">
                 <TextBlock
                     FontSize="12"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -195,13 +240,19 @@
                     Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}" />
             </StackPanel>
 
-            <!-- Row 5: Action bar – visible once ESD download completes -->
+            <!-- Row 6: Action bar – visible once ESD download completes -->
             <Grid
-                Grid.Row="5"
+                Grid.Row="6"
                 Visibility="{Binding ShowActionBar, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
                 <!-- Delete (left) -->
                 <Button
+                    Grid.Column="0"
                     HorizontalAlignment="Left"
                     Command="{Binding DeleteCommand}"
                     Background="#E81123">
@@ -211,15 +262,26 @@
                     </StackPanel>
                 </Button>
 
-                <!-- Open ESD directory (right) -->
-                <Button
+                <StackPanel
+                    Grid.Column="2"
                     HorizontalAlignment="Right"
-                    Command="{Binding OpenDirectoryCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontSize="12" Glyph="&#xE838;" />
-                        <TextBlock Text="打开目录" />
-                    </StackPanel>
-                </Button>
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button Command="{Binding ConvertToIsoCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontSize="12" Glyph="&#xE8B5;" />
+                            <TextBlock Text="{Binding ConvertToIsoButtonText}" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Open ESD directory -->
+                    <Button Command="{Binding OpenDirectoryCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontSize="12" Glyph="&#xE838;" />
+                            <TextBlock Text="打开目录" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
 
             </Grid>
 

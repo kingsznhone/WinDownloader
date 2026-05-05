@@ -2,9 +2,9 @@
 
 ## 当前定位
 
-主 WinUI 应用是 ESD-only 下载器：产品目录获取、ESD 下载、SHA-256 校验、SQLite 任务持久化、下载任务 UI 管理。WIM/ISO 后处理已迁移到 `src/POC`，只用于概念验证。
+主 WinUI 应用是 ESD 下载 + ISO 转换工具：产品目录获取、ESD 下载、SHA-256 校验、SQLite 任务持久化、下载任务 UI 管理，以及下载完成后的可选 ESD 到 ISO 转换。
 
-不要在主项目中重新引入 `OutputFormat`、WIM/ISO 转换状态、`ManagedWimLib`、`oscdimg` 或转换管道，除非用户明确要求重新设计主应用后处理功能。
+主项目已经集成 `ManagedWimLib` 和随输出复制的 `Oscdimg` 工具目录。不要在没有重新设计的情况下加入 `OutputFormat` 设置、WIM/ISO 持久化任务字段或下载任务 `TaskState.Converting`；当前 ISO 转换状态通过独立快照传递给 UI，不写入 SQLite。
 
 ## 技术栈
 
@@ -13,10 +13,11 @@
 - MVVM: CommunityToolkit.Mvvm (`ObservableObject`, `[RelayCommand]`)
 - DI / 生命周期: `Microsoft.Extensions.Hosting` + `IHostedService`
 - 下载引擎: Downloader NuGet，内部每个下载创建独立 Downloader 实例
+- ISO 转换: ManagedWimLib + bundled Oscdimg
 - 数据库: Microsoft.Data.Sqlite
 - 设置存储: JSON 文件
 - 打包: 非 MSIX 解包部署 (`WindowsPackageType=None`)
-- POC 后处理: `src/POC` 使用 ManagedWimLib / oscdimg
+- POC 验证: `src/POC` 保留同形控制台宿主，用于验证转换流水线和进度映射
 
 ## 项目结构
 
@@ -31,11 +32,16 @@ src/WindowsImageDownloader/
 │   ├── IDownloadService.cs
 │   ├── IDownloadTaskPathService.cs
 │   ├── IEsdDownloadPipeline.cs
+│   ├── IEsdToIsoConversionService.cs
+│   ├── IIsoCreationService.cs
 │   ├── ITaskOrchestratorService.cs
-│   └── IUpdateCatalogService.cs
-├── Models/                             # ESD 下载和 UI 模型
+│   ├── IUpdateCatalogService.cs
+│   └── IWimProcessingService.cs
+├── Models/                             # ESD 下载、ISO 转换和 UI 模型
 │   ├── CatalogOption.cs
+│   ├── ConversionSession.cs
 │   ├── DownloadTask.cs
+│   ├── EsdToIso*.cs / Iso*.cs / Wim*.cs
 │   ├── RawFile.cs / RawFileGroup.cs
 │   ├── TagType.cs
 │   └── TaskState.cs
@@ -45,22 +51,28 @@ src/WindowsImageDownloader/
 │   ├── DownloadService.cs
 │   ├── DownloadTaskPathService.cs
 │   ├── EsdDownloadPipeline.cs
+│   ├── EsdToIsoConversionService.cs
+│   ├── OscdimgIsoCreationService.cs
 │   ├── TaskOrchestratorService.cs
 │   ├── UpdateCatalogService.cs
+│   ├── WimProcessingService.cs
 │   ├── DownloadTaskSnapshot.cs
 │   └── TaskOperationResult.cs
 ├── ViewModels/
 └── Views/
 
-src/POC/
-└── Wim/                                # WIM/ISO 后处理概念验证代码
+src/POC/                                # 控制台验证/对照宿主
+├── Program.cs
+├── Interfaces/
+├── Models/
+└── Services/
 ```
 
 ## DI 注册
 
 | 生命周期 | 实例 |
 |----------|------|
-| `AddSingleton` | `IAppSettings`, `IUpdateCatalogService`, `ICacheService`, `IDownloadService`, `IDownloadTaskPathService`, `IEsdDownloadPipeline`, `ITaskOrchestratorService`, `SelectionViewModel`, `SettingsViewModel`, `DownloadPageViewModel` |
+| `AddSingleton` | `IAppSettings`, `IUpdateCatalogService`, `ICacheService`, `IDownloadService`, `IDownloadTaskPathService`, `IEsdDownloadPipeline`, `IWimProcessingService`, `IIsoCreationService`, `IEsdToIsoConversionService`, `ITaskOrchestratorService`, `SelectionViewModel`, `SettingsViewModel`, `DownloadPageViewModel` |
 | `AddHostedService` | `CacheService`, `TaskOrchestratorService` |
 
 `AddHostedService` 通过 `sp.GetRequiredService<T>()` 复用已注册 Singleton。启动顺序是 CacheService 先建表，TaskOrchestratorService 后加载任务；停止顺序相反。
@@ -79,6 +91,21 @@ SelectionViewModel.EnqueueDownloadAsync
   → Completed / Failed
 ```
 
+## ISO 转换流程
+
+```text
+DownloadTaskItemViewModel.ConvertToIsoAsync
+  → TaskOrchestratorService.ConvertToIsoAsync
+  → 单并发 ISO conversion worker
+  → EsdToIsoConversionService.ConvertAsync
+  → WimProcessingService.GetImagesAsync / ExtractImageAsync / ExportImagesAsync
+  → OscdimgIsoCreationService.CreateIsoAsync
+  → EsdToIsoTaskSnapshot 合并到 DownloadTaskSnapshot
+  → DownloadTaskItemViewModel 显示 main/sub progress
+```
+
+已有最终 ISO 时，转换按钮直接打开 ISO 所在目录。转换中退出应用时，Host 会取消 worker，转换服务在 `finally` 中尽力删除 `.staging`，oscdimg 进程会被 kill；转换任务本身不持久化，重启后不会自动恢复。
+
 ## SQLite Schema 修改
 
 - Schema 直接修改 `CacheService.CreateTableSql`。
@@ -90,8 +117,10 @@ SelectionViewModel.EnqueueDownloadAsync
 - UI 集合和绑定属性更新必须 marshal 到 UI 线程。
 - `TaskOrchestratorService._taskMap` 使用 `ConcurrentDictionary`。
 - `TaskOrchestratorService._tasks` 是 `ObservableCollection`，只在 UI 线程添加/删除，后台线程只读。
-- `TaskChanged` 可能从后台线程触发；`DownloadTaskItemViewModel` 使用 `DispatcherQueue.TryEnqueue` 合并并应用快照。
+- `TaskChanged` 可能从后台线程触发；`DownloadTaskItemViewModel` 使用 `DispatcherQueue.TryEnqueue` 合并并应用下载和 ISO 快照。
 - 下载并发由 `TaskOrchestratorService` 在任务启动前读取 `MaxConcurrentDownloads` 控制。
+- ISO 转换并发固定为 1；下载页徽标读取 `ActiveTaskCount`，合并下载和 ISO 转换 worker。
+- `TaskOrchestratorService.cs` 当前同时承担下载编排、ISO 转换编排、快照转发和 active count，是服务层中最重的文件；短期保持集中，未来若加入 ISO 取消/恢复/重试/持久化，应拆出独立转换编排服务。
 
 ## 设置项扩展流程
 
@@ -108,3 +137,5 @@ SelectionViewModel.EnqueueDownloadAsync
 | SQLite | `%LocalAppData%\WindowsImageDownloader\cache.db` | 下载任务持久化 |
 | JSON | `%LocalAppData%\WindowsImageDownloader\settings.json` | 应用设置 |
 | CAB 缓存 | `%LocalAppData%\WindowsImageDownloader\catalog_cache\` | 产品目录 CAB + XML |
+| ISO 输出 | `{DownloadDirectory}\WindowsImage\{LanguageCode}\{Architecture}\{FileNameWithoutExtension}.iso` | ESD 转换成品 |
+| ISO staging | `{DownloadDirectory}\WindowsImage\{LanguageCode}\{Architecture}\.staging` | 转换中间文件，默认完成后删除 |

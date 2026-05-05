@@ -1,6 +1,6 @@
-using POC.Models;
+using WindowsImageDownloader.Models;
 
-namespace POC.Interfaces;
+namespace WindowsImageDownloader.Interfaces;
 
 /// <summary>
 /// ESD 到 ISO 转换服务。

@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
-using POC.Interfaces;
-using POC.Models;
+using WindowsImageDownloader.Interfaces;
+using WindowsImageDownloader.Models;
 
-namespace POC.Services;
+namespace WindowsImageDownloader.Services;
 
 public sealed partial class OscdimgIsoCreationService : IIsoCreationService
 {
@@ -21,7 +21,7 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
 
     public async Task<IsoCreationResult> CreateIsoAsync(
         IsoCreationRequest request,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         var warnings = new List<string>();
@@ -47,12 +47,12 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
 
         var stopwatch = Stopwatch.StartNew();
         using var process = StartProcess(_toolPath, arguments);
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-        var stderrTask = ReadStdoutWithProgressAsync(process.StandardError, request.OnProgress, ct);
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var stderrTask = ReadStdoutWithProgressAsync(process.StandardError, request.OnProgress, cancellationToken);
 
         try
         {
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -222,4 +222,5 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
     }
 
     [GeneratedRegex(@"(\d+)%\s+complete", RegexOptions.IgnoreCase)]
-    private static partial Regex PercentageRegex();}
+    private static partial Regex PercentageRegex();
+}

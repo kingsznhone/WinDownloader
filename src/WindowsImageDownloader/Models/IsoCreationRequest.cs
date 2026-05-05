@@ -1,4 +1,4 @@
-namespace POC.Models;
+namespace WindowsImageDownloader.Models;
 
 public sealed record IsoCreationRequest(
     string StagingDirectory,

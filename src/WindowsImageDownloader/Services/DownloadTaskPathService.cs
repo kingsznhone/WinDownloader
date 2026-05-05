@@ -37,6 +37,21 @@ public sealed class DownloadTaskPathService : IDownloadTaskPathService
         return Path.Combine(ResolveDirectory(task), fileBaseName + ".esd");
     }
 
+    public string ResolveIsoPath(DownloadTask task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+
+        var fileBaseName = Path.GetFileNameWithoutExtension(task.FileName);
+        return Path.Combine(ResolveDirectory(task), fileBaseName + ".iso");
+    }
+
+    public string ResolveIsoStagingDirectory(DownloadTask task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+
+        return Path.Combine(ResolveDirectory(task), ".staging");
+    }
+
     public string ResolveTemporaryDownloadPath(DownloadTask task) =>
         ResolveEsdPath(task) + ".download";
 }
