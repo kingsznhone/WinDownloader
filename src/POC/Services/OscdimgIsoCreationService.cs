@@ -6,11 +6,8 @@ namespace POC.Services;
 
 public sealed class OscdimgIsoCreationService : IIsoCreationService
 {
-    public IsoCreationBackend Backend => IsoCreationBackend.Oscdimg;
-
     public async Task<IsoCreationResult> CreateIsoAsync(
         IsoCreationRequest request,
-        IProgress<EsdToIsoProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -25,31 +22,19 @@ public sealed class OscdimgIsoCreationService : IIsoCreationService
         var toolPath = FindOscdimg();
         if (toolPath is null)
         {
-            return IsoCreationResult.Skip(
-                Backend,
+            return IsoCreationResult.Failure(
                 request.OutputIsoPath,
-                "未找到 oscdimg.exe。请安装 Windows ADK，或仅查看已生成的 staging/WIM 中间产物。");
+                "未找到 oscdimg.exe。请安装 Windows ADK，或将 oscdimg.exe 放入 POC 输出目录。");
         }
 
         var arguments = CreateArguments(request, Path.GetDirectoryName(toolPath), warnings);
         if (arguments.Count == 0)
         {
-            return IsoCreationResult.Skip(
-                Backend,
+            return IsoCreationResult.Failure(
                 request.OutputIsoPath,
                 "staging 目录中没有可用的 BIOS/UEFI 启动映像。",
                 warnings);
         }
-
-        progress?.Report(new EsdToIsoProgress(
-            EsdToIsoStage.CreatingIso,
-            "正在调用 oscdimg 创建 ISO",
-            null,
-            null,
-            Backend,
-            request.OutputIsoPath,
-            null,
-            TimeSpan.Zero));
 
         if (File.Exists(request.OutputIsoPath))
         {
@@ -79,10 +64,8 @@ public sealed class OscdimgIsoCreationService : IIsoCreationService
         var outputSize = succeeded ? new FileInfo(request.OutputIsoPath).Length : 0;
 
         return new IsoCreationResult(
-            Backend,
             request.OutputIsoPath,
             succeeded,
-            Skipped: false,
             stopwatch.Elapsed,
             outputSize,
             toolPath,

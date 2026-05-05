@@ -1,11 +1,14 @@
+using ManagedWimLib;
+
 namespace POC.Models;
 
 public sealed record WimExportRequest(
     string SourceImagePath,
     string DestinationImagePath,
-    int ImageIndex,
-    string ImageName,
-    string ImageDescription,
-    WimCompressionKind Compression = WimCompressionKind.LZX,
-    bool MarkBootable = false,
-    bool CheckIntegrity = false);
+    IReadOnlyList<WimImageExportItem> Images,
+    CompressionType Compression = CompressionType.LZX,
+    bool CheckIntegrity = true,
+    bool Recompress = true,
+    bool Solid = false,
+    uint OutputChunkSize = 0,
+    uint OutputPackChunkSize = 0);

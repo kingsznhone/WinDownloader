@@ -5,13 +5,13 @@ public sealed record EsdToIsoResult(
     string RunDirectory,
     string StagingDirectory,
     string BootWimPath,
-    IReadOnlyList<string> InstallImagePaths,
-    IReadOnlyList<IsoCreationResult> IsoResults,
+    string InstallEsdPath,
+    string IsoPath,
+    IsoCreationResult? IsoResult,
     IReadOnlyList<WimImageInfo> SourceImages,
     IReadOnlyList<string> Warnings,
-    string EventsPath,
-    string ManifestPath,
-    string SummaryPath,
+    bool Succeeded,
+    string? ErrorMessage,
     DateTimeOffset StartedAt,
     DateTimeOffset CompletedAt)
 {

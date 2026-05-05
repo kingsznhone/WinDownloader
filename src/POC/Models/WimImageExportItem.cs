@@ -1,7 +1,9 @@
+using ManagedWimLib;
+
 namespace POC.Models;
 
 public sealed record WimImageExportItem(
     int ImageIndex,
     string ImageName,
     string ImageDescription,
-    bool MarkBootable = false);
+    ExportFlags ExportFlags = ExportFlags.None);

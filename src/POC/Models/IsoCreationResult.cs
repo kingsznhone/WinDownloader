@@ -1,10 +1,8 @@
 namespace POC.Models;
 
 public sealed record IsoCreationResult(
-    IsoCreationBackend Backend,
     string OutputIsoPath,
     bool Succeeded,
-    bool Skipped,
     TimeSpan Duration,
     long OutputSize,
     string? ToolPath,
@@ -15,17 +13,14 @@ public sealed record IsoCreationResult(
     IReadOnlyList<string> Warnings,
     string? ErrorMessage)
 {
-    public static IsoCreationResult Skip(
-        IsoCreationBackend backend,
+    public static IsoCreationResult Failure(
         string outputIsoPath,
         string message,
         IReadOnlyList<string>? warnings = null)
     {
         return new IsoCreationResult(
-            backend,
             outputIsoPath,
             Succeeded: false,
-            Skipped: true,
             Duration: TimeSpan.Zero,
             OutputSize: 0,
             ToolPath: null,

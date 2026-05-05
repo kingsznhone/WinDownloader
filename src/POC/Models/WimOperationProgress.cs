@@ -2,7 +2,6 @@ namespace POC.Models;
 
 public sealed record WimOperationProgress(
     WimOperationStage Stage,
-    string Message,
     double? Percent,
     ulong? CompletedBytes,
     ulong? TotalBytes,

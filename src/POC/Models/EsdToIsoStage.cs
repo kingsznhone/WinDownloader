@@ -8,7 +8,6 @@ public enum EsdToIsoStage
     BuildingBootWim,
     BuildingInstallImage,
     CreatingIso,
-    WritingManifest,
     Completed,
     Failed
 }
