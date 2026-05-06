@@ -2,8 +2,8 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.Text;
 using ManagedWimLib;
-using WindowsImageDownloader.Iso;
-using WindowsImageDownloader.Wim;
+using WinDownloader.Iso;
+using WinDownloader.Wim;
 
 namespace POC;
 

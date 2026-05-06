@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.26100.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
+    <RootNamespace>WinDownloader</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>true</WinUISDKReferences>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="favicon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
+    <PackageReference Include="Downloader" Version="5.4.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinDownloader.Iso\WinDownloader.Iso.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyWinUIResourcesToPublishDirectory" AfterTargets="Publish" Condition="'$(PublishDir)' != ''">
+    <PropertyGroup>
+      <_WinUIResourceSourceDir Condition="Exists('$(TargetDir)$(AssemblyName).pri')">$(TargetDir)</_WinUIResourceSourceDir>
+      <_WinUIResourceSourceDir Condition="'$(_WinUIResourceSourceDir)' == '' and Exists('$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).pri')">
+        $(MSBuildProjectDirectory)\$(OutputPath)</_WinUIResourceSourceDir>
+      <_WinUIResourceSourceDir Condition="'$(_WinUIResourceSourceDir)' == '' and Exists('$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).pri')">
+        $(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\</_WinUIResourceSourceDir>
+      <_WinUIResourceSourceDir Condition="'$(_WinUIResourceSourceDir)' == '' and Exists('$(MSBuildProjectDirectory)\bin\$(Platform)\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\$(AssemblyName).pri')">
+        $(MSBuildProjectDirectory)\bin\$(Platform)\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</_WinUIResourceSourceDir>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(_WinUIResourceSourceDir)' != ''">
+      <_WinUIPublishResource Include="$(_WinUIResourceSourceDir)$(AssemblyName).pri" />
+      <_WinUIPublishResource Include="$(_WinUIResourceSourceDir)**\*.xbf" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_WinUIPublishResource)" DestinationFiles="@(_WinUIPublishResource->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_WinUIPublishResource)' != ''" />
+  </Target>
+
+  <Target Name="RemoveFoldersWithMuiFiles" AfterTargets="Build">
+    <ItemGroup>
+      <RemovingFiles Include="$(OutDir)*\*.mui" Exclude="$(OutDir)en-us\*.mui;$(OutDir)zh-cn\*.mui" />
+      <RemovingFolders Include="@(RemovingFiles->'%(RootDir)%(Directory)')" />
+    </ItemGroup>
+    <RemoveDir Directories="@(RemovingFolders)" />
+  </Target>
+
+</Project>

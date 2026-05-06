@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/解决方案项/">
+    <File Path="../doc/roadmap.md" />
+  </Folder>
+  <Project Path="POC/POC.csproj" Id="ed5b7cc9-2cd1-4081-b4ca-ae2747dff117" />
+  <Project Path="WinDownloader.Iso/WinDownloader.Iso.csproj" />
+  <Project Path="WinDownloader.Wim/WinDownloader.Wim.csproj" />
+  <Project Path="WinDownloader/WinDownloader.csproj">
+    <Platform Project="x64" />
+    <Deploy />
+  </Project>
+</Solution>

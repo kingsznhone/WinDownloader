@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="WinDownloader.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="WinDownloader"
+    >
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <NavigationView
+        x:Name="RootNavigation"
+        IsBackButtonVisible="Collapsed"
+        IsSettingsVisible="False"
+        Loaded="RootNavigation_Loaded"
+        PaneDisplayMode="Auto"
+        PaneTitle="WinDownloader"
+        ExpandedModeThresholdWidth="960"
+        OpenPaneLength="180"
+
+        SelectionChanged="RootNavigation_SelectionChanged">
+        <NavigationView.MenuItems>
+            <NavigationViewItem
+                x:Uid="Nav_Selection"
+                x:Name="SelectionNavigationItem"
+                Icon="Library"
+                Tag="SelectionPage" />
+            <NavigationViewItem
+                x:Uid="Nav_Downloads"
+                x:Name="DownloadNavigationItem"
+                Icon="Download"
+                Tag="DownloadPage">
+                <NavigationViewItem.InfoBadge>
+                    <InfoBadge
+                        Value="{x:Bind DownloadViewModel.PendingTaskCount, Mode=OneWay}"
+                        Visibility="{x:Bind DownloadViewModel.PendingTaskBadgeVisibility, Mode=OneWay}" />
+                </NavigationViewItem.InfoBadge>
+            </NavigationViewItem>
+        </NavigationView.MenuItems>
+        <NavigationView.FooterMenuItems>
+            <NavigationViewItem
+                x:Uid="Nav_Settings"
+                x:Name="SettingsNavigationItem"
+                Icon="Setting"
+                Tag="SettingsPage" />
+        </NavigationView.FooterMenuItems>
+        <Frame x:Name="ContentFrame" />
+    </NavigationView>
+</Window>

@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Nav_Selection.Content" xml:space="preserve">
+    <value>Product catalog</value>
+  </data>
+  <data name="Nav_Downloads.Content" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="Nav_Settings.Content" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Selection_Title.Text" xml:space="preserve">
+    <value>Product catalog</value>
+  </data>
+  <data name="Selection_ReloadButton.Content" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Selection_LanguageFilter.Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Selection_ArchitectureFilter.Header" xml:space="preserve">
+    <value>Architecture</value>
+  </data>
+  <data name="Selection_OperationInfo.Title" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="Selection_Empty.Text" xml:space="preserve">
+    <value>No matching catalog items</value>
+  </data>
+  <data name="Selection_ErrorTitle.Text" xml:space="preserve">
+    <value>Failed to load product catalog</value>
+  </data>
+  <data name="Selection_RetryButton.Content" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Download_Title.Text" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="Download_EmptyTitle.Text" xml:space="preserve">
+    <value>No downloads yet</value>
+  </data>
+  <data name="Download_EmptySubtitle.Text" xml:space="preserve">
+    <value>Click &quot;Download ESD&quot; in the product catalog to add a task</value>
+  </data>
+  <data name="Settings_DownloadSection.Text" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="Settings_DownloadDirectory.Header" xml:space="preserve">
+    <value>Download directory</value>
+  </data>
+  <data name="Settings_DownloadDirectory.Description" xml:space="preserve">
+    <value>Where ESD files and converted output are saved</value>
+  </data>
+  <data name="Settings_DownloadDirectoryTextBox.PlaceholderText" xml:space="preserve">
+    <value>Enter a path or browse...</value>
+  </data>
+  <data name="Settings_BrowseButton.Content" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="Settings_ChunkCount.Header" xml:space="preserve">
+    <value>Download chunks</value>
+  </data>
+  <data name="Settings_ChunkCount.Description" xml:space="preserve">
+    <value>Splits the file into N independent HTTP Range requests for finer resume granularity (1-256)</value>
+  </data>
+  <data name="Settings_ParallelCount.Header" xml:space="preserve">
+    <value>Parallel streams</value>
+  </data>
+  <data name="Settings_ParallelCount.Description" xml:space="preserve">
+    <value>Active HTTP connections per download; values above the chunk count provide no extra benefit (1-16)</value>
+  </data>
+  <data name="Settings_MaxConcurrentDownloads.Header" xml:space="preserve">
+    <value>Maximum concurrent downloads</value>
+  </data>
+  <data name="Settings_MaxConcurrentDownloads.Description" xml:space="preserve">
+    <value>Maximum number of download tasks running at the same time (1-16)</value>
+  </data>
+  <data name="Settings_InterfaceSection.Text" xml:space="preserve">
+    <value>Interface</value>
+  </data>
+  <data name="Settings_LanguageCard.Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_LanguageCard.Description" xml:space="preserve">
+    <value>Changes take effect after restarting the app</value>
+  </data>
+  <data name="Settings_LanguageAuto.Content" xml:space="preserve">
+    <value>Follow system</value>
+  </data>
+  <data name="Settings_LanguageEnglish.Content" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Settings_LanguageChinese.Content" xml:space="preserve">
+    <value>Chinese (Simplified)</value>
+  </data>
+  <data name="Settings_RestartCard.Header" xml:space="preserve">
+    <value>Restart app</value>
+  </data>
+  <data name="Settings_RestartCard.Description" xml:space="preserve">
+    <value>Close the current window and launch the app again</value>
+  </data>
+  <data name="Settings_RestartButton.Content" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="Settings_AdvancedSection.Text" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="Settings_ResetCard.Header" xml:space="preserve">
+    <value>Reset to defaults</value>
+  </data>
+  <data name="Settings_ResetCard.Description" xml:space="preserve">
+    <value>Restore all settings to their factory defaults</value>
+  </data>
+  <data name="Settings_ResetButton.Content" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="RawFile_DownloadEsd.Text" xml:space="preserve">
+    <value>Download ESD</value>
+  </data>
+  <data name="DownloadTask_Pause.Text" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="DownloadTask_Resume.Text" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="DownloadTask_DeleteFile.Text" xml:space="preserve">
+    <value>Delete file</value>
+  </data>
+  <data name="DownloadTask_OpenDirectory.Text" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+  <data name="EditionGroup_Client" xml:space="preserve">
+    <value>Consumer Retail</value>
+  </data>
+  <data name="EditionGroup_Enterprise" xml:space="preserve">
+    <value>Enterprise Volume</value>
+  </data>
+  <data name="EditionGroup_EnterpriseN" xml:space="preserve">
+    <value>Enterprise Volume N</value>
+  </data>
+  <data name="EditionGroup_China" xml:space="preserve">
+    <value>China-only</value>
+  </data>
+  <data name="EditionGroup_Ungrouped" xml:space="preserve">
+    <value>Ungrouped</value>
+  </data>
+  <data name="Retail_RetailOnly" xml:space="preserve">
+    <value>Retail</value>
+  </data>
+  <data name="Retail_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Selection_LoadingMessage" xml:space="preserve">
+    <value>Loading Windows product catalog...</value>
+  </data>
+  <data name="Selection_RefreshingMessage" xml:space="preserve">
+    <value>Refreshing product catalog...</value>
+  </data>
+  <data name="Selection_AllLanguages" xml:space="preserve">
+    <value>All languages</value>
+  </data>
+  <data name="Selection_AllArchitectures" xml:space="preserve">
+    <value>All architectures</value>
+  </data>
+  <data name="Selection_NoData" xml:space="preserve">
+    <value>No catalog data</value>
+  </data>
+  <data name="Selection_ResultSummaryFormat" xml:space="preserve">
+    <value>{0} catalog entries, showing {1} files</value>
+  </data>
+  <data name="Selection_EnqueueSuccess" xml:space="preserve">
+    <value>Added to download queue.</value>
+  </data>
+  <data name="Selection_EnqueueNotAdded" xml:space="preserve">
+    <value>Task not added.</value>
+  </data>
+  <data name="Selection_EnqueueCancelled" xml:space="preserve">
+    <value>Download task enqueue cancelled.</value>
+  </data>
+  <data name="Selection_EnqueueErrorFormat" xml:space="preserve">
+    <value>Failed to add download task: {0}</value>
+  </data>
+  <data name="DownloadTask_DirectoryNotFound" xml:space="preserve">
+    <value>Directory not found.</value>
+  </data>
+  <data name="DownloadTask_CancelButtonRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="DownloadTask_CancelButtonCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="DownloadTask_OpenIsoDirectory" xml:space="preserve">
+    <value>Open ISO folder</value>
+  </data>
+  <data name="DownloadTask_ConvertToIso" xml:space="preserve">
+    <value>Convert to ISO</value>
+  </data>
+  <data name="DownloadTask_OperationFailed" xml:space="preserve">
+    <value>Operation did not complete.</value>
+  </data>
+  <data name="IsoState_NotStarted" xml:space="preserve">
+    <value>Waiting for ISO conversion</value>
+  </data>
+  <data name="IsoState_Completed" xml:space="preserve">
+    <value>ISO conversion complete</value>
+  </data>
+  <data name="IsoState_Failed" xml:space="preserve">
+    <value>ISO conversion failed</value>
+  </data>
+  <data name="IsoState_Canceled" xml:space="preserve">
+    <value>ISO conversion cancelled</value>
+  </data>
+  <data name="IsoStage_Preparing" xml:space="preserve">
+    <value>Preparing staging directory</value>
+  </data>
+  <data name="IsoStage_InspectingSource" xml:space="preserve">
+    <value>Inspecting ESD source</value>
+  </data>
+  <data name="IsoStage_ApplyingSetupMedia" xml:space="preserve">
+    <value>Applying setup media</value>
+  </data>
+  <data name="IsoStage_BuildingBootWim" xml:space="preserve">
+    <value>Building boot.wim</value>
+  </data>
+  <data name="IsoStage_BuildingInstallImage" xml:space="preserve">
+    <value>Building install.wim</value>
+  </data>
+  <data name="IsoStage_CreatingIso" xml:space="preserve">
+    <value>Creating ISO</value>
+  </data>
+  <data name="IsoStage_Default" xml:space="preserve">
+    <value>Converting ISO</value>
+  </data>
+  <data name="IsoSub_ConversionIncomplete" xml:space="preserve">
+    <value>Conversion did not complete.</value>
+  </data>
+  <data name="IsoSub_OscdimgWritingFormat" xml:space="preserve">
+    <value>oscdimg writing ISO {0:0}%</value>
+  </data>
+  <data name="IsoSub_WaitingSlot" xml:space="preserve">
+    <value>Waiting for ISO conversion slot</value>
+  </data>
+  <data name="IsoSub_IsoGenerated" xml:space="preserve">
+    <value>ISO file generated</value>
+  </data>
+  <data name="IsoSub_OutputFileFormat" xml:space="preserve">
+    <value>Output {0}</value>
+  </data>
+  <data name="IsoSub_Stage_Preparing" xml:space="preserve">
+    <value>Cleaning up and creating .staging directory</value>
+  </data>
+  <data name="IsoSub_Stage_InspectingSource" xml:space="preserve">
+    <value>Scanning image indices in source ESD</value>
+  </data>
+  <data name="IsoSub_Stage_ApplyingSetupMedia" xml:space="preserve">
+    <value>Expanding image 1 to ISO file tree</value>
+  </data>
+  <data name="IsoSub_Stage_BuildingBootWim" xml:space="preserve">
+    <value>Exporting boot image to boot.wim</value>
+  </data>
+  <data name="IsoSub_Stage_BuildingInstallImage" xml:space="preserve">
+    <value>Reusing LZMS install image to install.wim</value>
+  </data>
+  <data name="IsoSub_Stage_CreatingIso" xml:space="preserve">
+    <value>Calling oscdimg to package file tree</value>
+  </data>
+  <data name="WimStage_Extracting" xml:space="preserve">
+    <value>Extracting image</value>
+  </data>
+  <data name="WimStage_Writing" xml:space="preserve">
+    <value>Writing image</value>
+  </data>
+  <data name="WimStage_Verifying" xml:space="preserve">
+    <value>Verifying image data</value>
+  </data>
+  <data name="WimStage_Metadata" xml:space="preserve">
+    <value>Writing image metadata</value>
+  </data>
+  <data name="WimStage_Completed" xml:space="preserve">
+    <value>Step completed</value>
+  </data>
+  <data name="WimStage_Default" xml:space="preserve">
+    <value>Processing image</value>
+  </data>
+</root>
