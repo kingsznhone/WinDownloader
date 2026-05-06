@@ -107,7 +107,7 @@
                 Header="语言"
                 Description="{x:Bind ViewModel.SelectedLanguageHint, Mode=OneWay}">
                 <ctk:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE757;" />
+                    <FontIcon Glyph="&#xE774;" />
                 </ctk:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="languageComboBox"
