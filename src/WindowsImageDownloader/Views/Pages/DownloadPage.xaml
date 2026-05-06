@@ -23,6 +23,7 @@
 
         <!-- Header -->
         <TextBlock
+            x:Uid="Download_Title"
             Grid.Row="0"
             Margin="0,0,0,20"
             FontSize="28"
@@ -61,10 +62,12 @@
                 Glyph="&#xE896;"
                 Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
             <TextBlock
+                x:Uid="Download_EmptyTitle"
                 HorizontalAlignment="Center"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Text="暂无下载任务" />
             <TextBlock
+                x:Uid="Download_EmptySubtitle"
                 HorizontalAlignment="Center"
                 FontSize="12"
                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"

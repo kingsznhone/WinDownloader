@@ -38,7 +38,7 @@
                     CommandParameter="{Binding FileGroup, ElementName=Root}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="14" Glyph="&#xE896;" />
-                        <TextBlock Text="下载 ESD" />
+                        <TextBlock x:Uid="RawFile_DownloadEsd" Text="下载 ESD" />
                     </StackPanel>
                 </Button>
             </Grid>

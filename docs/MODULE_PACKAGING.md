@@ -25,6 +25,8 @@ dotnet build .\src\WindowsImageDownloader\WindowsImageDownloader.csproj -nologo 
 
 主项目只声明 `x64`/`win-x64`，Windows App SDK 构建需要显式平台参数；省略 `-p:Platform=x64` 会触发不支持的架构错误。
 
+WinUI/MRT Core 字符串资源位于 `Strings/{language}/Resources.resw`。当前非 MSIX 构建会把这些 `.resw` 编入应用 PRI，并在输出目录生成 `WindowsImageDownloader.pri`；发布阶段通过 `CopyWinUIResourcesToPublishDirectory` target 自动把 `WindowsImageDownloader.pri` 和 `.xbf` 复制到 publish 目录，不需要额外发布独立的 `resources.pri`。详细规则见 [MODULE_LOCALIZATION.md](MODULE_LOCALIZATION.md)。
+
 ## 发布
 
 ```powershell

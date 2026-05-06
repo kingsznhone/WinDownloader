@@ -25,11 +25,13 @@
         SelectionChanged="RootNavigation_SelectionChanged">
         <NavigationView.MenuItems>
             <NavigationViewItem
+                x:Uid="Nav_Selection"
                 x:Name="SelectionNavigationItem"
                 Content="产品目录"
                 Icon="Library"
                 Tag="SelectionPage" />
             <NavigationViewItem
+                x:Uid="Nav_Downloads"
                 x:Name="DownloadNavigationItem"
                 Content="下载任务"
                 Icon="Download"
@@ -43,6 +45,7 @@
         </NavigationView.MenuItems>
         <NavigationView.FooterMenuItems>
             <NavigationViewItem
+                x:Uid="Nav_Settings"
                 x:Name="SettingsNavigationItem"
                 Content="设置"
                 Icon="Setting"

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WindowsImageDownloader.Interfaces;
@@ -78,11 +79,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string SelectedLanguageHint
         => _settings.ResolveEffectiveLanguage();
 
+    [ObservableProperty]
+    public partial bool IsRestartRequired { get; set; }
+
     partial void OnSelectedLanguageIndexChanged(int value)
     {
         var tag = (value >= 0 && value < _languageTags.Length) ? _languageTags[value] : null;
         _settings.AppLanguage = tag;
         OnPropertyChanged(nameof(SelectedLanguageHint));
+        IsRestartRequired = true;
     }
 
     private static int LanguageTagToIndex(string? tag)
@@ -91,6 +96,32 @@ public sealed partial class SettingsViewModel : ObservableObject
             if (string.Equals(_languageTags[i], tag, StringComparison.OrdinalIgnoreCase))
                 return i;
         return 0; // Auto
+    }
+
+    // ── Restart ─────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private static void RestartApp()
+    {
+        var executablePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executablePath))
+            return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = executablePath,
+                UseShellExecute = true,
+                WorkingDirectory = AppContext.BaseDirectory,
+            });
+
+            App.MainWindow.Close();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception)
+        {
+            Debug.WriteLine($"[SettingsViewModel] Failed to restart app: {ex.Message}");
+        }
     }
 
     // ── Reset ────────────────────────────────────────────────────────────────

@@ -126,6 +126,10 @@ IsoSubProgress / IsIsoSubProgressIndeterminate
 | `SelectedLanguageIndex` | UI 语言选择 |
 | `ResetCommand` | 恢复默认设置 |
 
+## 本地化
+
+静态 XAML 文本使用 `x:Uid` 绑定 `.resw` 资源；详细资源范围、命名约定、PRI 行为和语言切换规则见 [MODULE_LOCALIZATION.md](MODULE_LOCALIZATION.md)。
+
 ## 注意事项
 
 - `DispatcherQueue.GetForCurrentThread()` 必须在 UI 线程调用。

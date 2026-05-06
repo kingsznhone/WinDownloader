@@ -10,11 +10,11 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
 
     public OscdimgIsoCreationService()
     {
-        var candidate = Path.Combine(AppContext.BaseDirectory, "Oscdimg", "oscdimg.exe");
+        var candidate = Path.Combine(AppContext.BaseDirectory, "oscdimg.exe");
         _toolPath = File.Exists(candidate)
             ? candidate
             : throw new InvalidOperationException(
-                "Can't find oscdimg.exe. Please place oscdimg.exe in the Oscdimg subdirectory of the root directory.");
+                "Can't find oscdimg.exe. Please place oscdimg.exe in the application's root directory.");
     }
 
     public async Task<IsoCreationResult> CreateIsoAsync(

@@ -19,6 +19,7 @@ ISO 转换已经接入主项目：`src/WindowsImageDownloader.Wim` 封装 Manage
 | [MODULE_MODELS.md](docs/MODULE_MODELS.md) | 数据模型 |
 | [MODULE_UI.md](docs/MODULE_UI.md) | WinUI 页面、控件、ViewModel |
 | [MODULE_SETTINGS.md](docs/MODULE_SETTINGS.md) | 设置服务和设置页 |
+| [MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md) | WinUI/MRT Core 本地化、`.resw`、PRI 和语言重启生效 |
 | [MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md) | 打包与发布 |
 | [MODULE_POC.md](docs/MODULE_POC.md) | POC 控制台宿主和 WIM/ISO 共享库验证 |
 
@@ -36,3 +37,4 @@ ISO 转换已经接入主项目：`src/WindowsImageDownloader.Wim` 封装 Manage
 | 校验职责 | ESD 下载与 SHA-256 校验由 `IEsdDownloadPipeline` 封装 |
 | WIM 生命周期 | `WindowsImageDownloader.Wim.WimProcessingService` 是 Singleton，内部串行化 WIM 操作并在 dispose 时清理 ManagedWimLib 全局状态 |
 | 设置扩展 | `IAppSettings` → `AppSettingsService` → ViewModel → XAML → 文档 |
+| 本地化 | 当前只维护 `en-US`/`zh-CN`，正常构建自动生成 `WindowsImageDownloader.pri`，切换语言后重启生效 |

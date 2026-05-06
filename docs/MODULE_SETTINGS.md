@@ -34,7 +34,7 @@ public interface IAppSettings : INotifyPropertyChanged
 
 | 设置 | 默认值 | 说明 |
 |------|--------|------|
-| `DownloadChunkCount` | 32 | Downloader 分块数，范围 1-128 |
+| `DownloadChunkCount` | 32 | Downloader 分块数，范围 1-256 |
 | `DownloadParallelCount` | 4 | 单任务并行 HTTP 流数，范围 1-16 |
 | `MaxConcurrentDownloads` | 1 | 同时下载任务数，范围 1-16 |
 | `DownloadDirectory` | 系统下载文件夹 | 根下载目录 |
@@ -59,9 +59,11 @@ public interface IAppSettings : INotifyPropertyChanged
 
 `ResolveEffectiveLanguage()` 优先级：
 
-1. `AppLanguage` 非空时直接使用。
-2. 根据系统 `CultureInfo.CurrentUICulture.Name` 匹配：`zh-*`、`ja*`、`fr*`、`es*`、`ko*`。
-3. 默认回退到 `en-US`。
+1. `AppLanguage` 非空且为受支持语言时直接使用。
+2. 根据系统 `CultureInfo.CurrentUICulture.Name` 匹配 `zh*` 到 `zh-CN`。
+3. 其他语言默认回退到 `en-US`。
+
+当前 UI 本地化只维护 `en-US` 与 `zh-CN` 两套资源。设置页提供“跟随系统”、“English”和“中文（简体）”三个选项；切换语言会立即写入 JSON，但已加载的 WinUI 页面不会实时刷新，需要点击语言卡片下方的“重启应用”卡片或手动重启后生效。详细规则见 [MODULE_LOCALIZATION.md](MODULE_LOCALIZATION.md)。
 
 ## 新增设置流程
 
@@ -75,3 +77,4 @@ public interface IAppSettings : INotifyPropertyChanged
 
 - `MaxConcurrentDownloads` 会影响后续准备启动的下载任务；运行时调低不会中断已运行下载。
 - `DownloadDirectory` 为空时服务层应回退到默认下载目录。
+- `AppLanguage` 仅接受 `en-US` 和 `zh-CN`；其他旧值或无效值会按“跟随系统”处理。

@@ -47,11 +47,13 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock
+                        x:Uid="Selection_Title"
                         Grid.Row="0"
                         FontSize="28"
                         FontWeight="SemiBold"
                         Text="产品目录" />
                 <Button
+                    x:Uid="Selection_ReloadButton"
                     Grid.Column="1"
                     Command="{x:Bind ViewModel.ReloadCommand}"
                     Content="刷新"
@@ -67,6 +69,7 @@
                 </Grid.ColumnDefinitions>
 
                 <ComboBox
+                    x:Uid="Selection_LanguageFilter"
                     Grid.Column="0"
                     Header="语言"
                     DisplayMemberPath="Label"
@@ -77,6 +80,7 @@
 
                     SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}" />
                 <ComboBox
+                    x:Uid="Selection_ArchitectureFilter"
                     Grid.Column="1"
                     Header="架构"
                     DisplayMemberPath="Label"
@@ -88,6 +92,7 @@
                 </Grid>
 
             <InfoBar
+                x:Uid="Selection_OperationInfo"
                 Grid.Row="2"
                 Title="下载任务"
                 IsClosable="True"
@@ -121,6 +126,7 @@
                 </ListView>
 
                 <TextBlock
+                    x:Uid="Selection_Empty"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -136,6 +142,7 @@
             Spacing="14"
             Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}">
             <TextBlock
+                x:Uid="Selection_ErrorTitle"
                 FontSize="22"
                 FontWeight="SemiBold"
                 Text="产品目录读取失败" />
@@ -144,6 +151,7 @@
                 Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                 TextWrapping="WrapWholeWords" />
             <Button
+                x:Uid="Selection_RetryButton"
                 Command="{x:Bind ViewModel.ReloadCommand}"
                 Content="重试" />
         </StackPanel>

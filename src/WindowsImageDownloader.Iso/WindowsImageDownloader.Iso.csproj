@@ -15,4 +15,11 @@
     <ProjectReference Include="..\WindowsImageDownloader.Wim\WindowsImageDownloader.Wim.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Oscdimg\oscdimg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>oscdimg.exe</Link>
+    </None>
+  </ItemGroup>
+
 </Project>

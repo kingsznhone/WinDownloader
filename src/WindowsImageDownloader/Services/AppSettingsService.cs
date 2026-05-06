@@ -77,10 +77,11 @@ public sealed class AppSettingsService : IAppSettings
         get => Get<string?>(Keys.AppLanguage, null);
         set
         {
-            if (value is null)
+            var normalized = NormalizeSupportedLanguage(value);
+            if (normalized is null)
                 Remove(Keys.AppLanguage);
             else
-                Set(Keys.AppLanguage, value);
+                Set(Keys.AppLanguage, normalized);
         }
     }
 
@@ -90,20 +91,27 @@ public sealed class AppSettingsService : IAppSettings
     public string ResolveEffectiveLanguage()
     {
         var saved = AppLanguage;
-        if (!string.IsNullOrEmpty(saved))
-            return saved;
+        var normalizedSaved = NormalizeSupportedLanguage(saved);
+        if (normalizedSaved is not null)
+            return normalizedSaved;
 
         var systemLang = CultureInfo.CurrentUICulture.Name;
 
-        return systemLang switch
-        {
-            _ when systemLang.StartsWith("zh-", StringComparison.OrdinalIgnoreCase) => "zh-CN",
-            _ when systemLang.StartsWith("ja",  StringComparison.OrdinalIgnoreCase) => "ja-JP",
-            _ when systemLang.StartsWith("fr",  StringComparison.OrdinalIgnoreCase) => "fr-FR",
-            _ when systemLang.StartsWith("es",  StringComparison.OrdinalIgnoreCase) => "es-ES",
-            _ when systemLang.StartsWith("ko",  StringComparison.OrdinalIgnoreCase) => "ko-KR",
-            _ => "en-US",
-        };
+        return systemLang.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-CN" : "en-US";
+    }
+
+    private static string? NormalizeSupportedLanguage(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        if (string.Equals(value, "en-US", StringComparison.OrdinalIgnoreCase))
+            return "en-US";
+
+        if (string.Equals(value, "zh-CN", StringComparison.OrdinalIgnoreCase))
+            return "zh-CN";
+
+        return null;
     }
 
     // ── Defaults & reset ─────────────────────────────────────────────────────

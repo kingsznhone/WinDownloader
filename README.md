@@ -20,4 +20,4 @@ dotnet build .\src\WindowsImageDownloader\WindowsImageDownloader.csproj -nologo 
 
 ## 文档入口
 
-从 [docs/WORKFLOW.md](docs/WORKFLOW.md) 开始阅读；总体结构见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+从 [docs/WORKFLOW.md](docs/WORKFLOW.md) 开始阅读；总体结构见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。本地化资源、PRI 行为和语言切换规则见 [docs/MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md)。

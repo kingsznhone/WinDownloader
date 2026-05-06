@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Windows.Globalization;
 using Microsoft.UI.Xaml;
 using WindowsImageDownloader.Interfaces;
 using WindowsImageDownloader.Iso;
@@ -16,8 +18,12 @@ public partial class App : Application
 
     public App()
     {
+        var settings = new AppSettingsService();
+        settings.EnsureDefaults();
+        ApplyLanguageOverride(settings);
+
         InitializeComponent();
-        _host = BuildHost();
+        _host = BuildHost(settings);
     }
 
     public static IServiceProvider Services => ((App)Current)._host!.Services;
@@ -26,15 +32,10 @@ public partial class App : Application
     {
         return Services.GetRequiredService<T>();
     }
-    private static IHost BuildHost()
+    private static IHost BuildHost(AppSettingsService settings)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<IAppSettings, AppSettingsService>(static _ =>
-        {
-            var settings = new AppSettingsService();
-            settings.EnsureDefaults();
-            return settings;
-        });
+        builder.Services.AddSingleton<IAppSettings>(settings);
         builder.Services.AddSingleton<IUpdateCatalogService, UpdateCatalogService>();
         builder.Services.AddSingleton<ICacheService, CacheService>();
         builder.Services.AddSingleton<IDownloadService, DownloadService>();
@@ -76,6 +77,21 @@ public partial class App : Application
         _window.AppWindow.Closing += OnMainWindowClosing;
 
         _window.Activate();
+    }
+
+    private static void ApplyLanguageOverride(IAppSettings settings)
+    {
+        var language = settings.ResolveEffectiveLanguage();
+        if (string.IsNullOrWhiteSpace(language))
+            return;
+
+        ApplicationLanguages.PrimaryLanguageOverride = language;
+
+        var culture = CultureInfo.GetCultureInfo(language);
+        CultureInfo.CurrentCulture = culture;
+        CultureInfo.CurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
     }
 
     private async void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender,

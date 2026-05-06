@@ -82,7 +82,7 @@
                         Visibility="{Binding CanPause, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE769;" />
-                            <TextBlock Text="暂停" />
+                            <TextBlock x:Uid="DownloadTask_Pause" Text="暂停" />
                         </StackPanel>
                     </Button>
 
@@ -94,7 +94,7 @@
                         Visibility="{Binding CanResume, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE768;" />
-                            <TextBlock Text="继续" />
+                            <TextBlock x:Uid="DownloadTask_Resume" Text="继续" />
                         </StackPanel>
                     </Button>
 
@@ -204,7 +204,7 @@
                     </Button.Resources>
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon FontSize="12" Glyph="&#xE74D;" />
-                        <TextBlock Text="删除文件" />
+                        <TextBlock x:Uid="DownloadTask_DeleteFile" Text="删除文件" />
                     </StackPanel>
                 </Button>
 
@@ -224,7 +224,7 @@
                     <Button Command="{Binding OpenDirectoryCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE838;" />
-                            <TextBlock Text="打开目录" />
+                            <TextBlock x:Uid="DownloadTask_OpenDirectory" Text="打开目录" />
                         </StackPanel>
                     </Button>
                 </StackPanel>

@@ -23,6 +23,7 @@
 | 数据模型 | [MODULE_MODELS.md](MODULE_MODELS.md) | 修改 RawFile、DownloadTask、TaskState、ISO/WIM 模型或持久化字段时 |
 | UI 层 | [MODULE_UI.md](MODULE_UI.md) | 修改 WinUI 页面、控件、ViewModel、导航或绑定线程时 |
 | 设置 | [MODULE_SETTINGS.md](MODULE_SETTINGS.md) | 修改 IAppSettings、设置默认值、设置页或 JSON 存储时 |
+| 本地化 | [MODULE_LOCALIZATION.md](MODULE_LOCALIZATION.md) | 修改 `.resw`、`x:Uid`、语言选择、PRI 资源或本地化构建行为时 |
 | 打包发布 | [MODULE_PACKAGING.md](MODULE_PACKAGING.md) | 修改 csproj、NuGet、Windows App SDK、发布参数、打包资产时 |
 | POC 验证 | [MODULE_POC.md](MODULE_POC.md) | 修改 `src/POC`、`WindowsImageDownloader.Wim`、`WindowsImageDownloader.Iso`、oscdimg、WIM/ISO 验证逻辑时 |
 
@@ -38,6 +39,7 @@ flowchart TD
     C -->|数据模型| G[MODULE_MODELS.md]
     C -->|UI/ViewModel| H[MODULE_UI.md]
     C -->|设置| I[MODULE_SETTINGS.md]
+    C -->|本地化| M[MODULE_LOCALIZATION.md]
     C -->|打包发布| J[MODULE_PACKAGING.md]
     C -->|POC/WIM/ISO| K[MODULE_POC.md]
     D --> L[阅读相关源码]
@@ -46,6 +48,7 @@ flowchart TD
     G --> L
     H --> L
     I --> L
+    M --> L
     J --> L
     K --> L
 ```
@@ -100,6 +103,7 @@ flowchart TD
 | SQLite schema 或任务字段变化 | [MODULE_DOWNLOAD.md](MODULE_DOWNLOAD.md)、[MODULE_MODELS.md](MODULE_MODELS.md) |
 | ViewModel、页面、控件、绑定线程变化 | [MODULE_UI.md](MODULE_UI.md)，必要时更新对应业务模块文档 |
 | 设置项、默认值、范围、JSON key 变化 | [MODULE_SETTINGS.md](MODULE_SETTINGS.md) |
+| `.resw`、`x:Uid`、语言选择、PRI 资源行为变化 | [MODULE_LOCALIZATION.md](MODULE_LOCALIZATION.md)，必要时更新 [MODULE_UI.md](MODULE_UI.md)、[MODULE_SETTINGS.md](MODULE_SETTINGS.md)、[MODULE_PACKAGING.md](MODULE_PACKAGING.md) |
 | NuGet、TargetFramework、Windows App SDK、发布配置变化 | [MODULE_PACKAGING.md](MODULE_PACKAGING.md)，必要时更新 [ARCHITECTURE.md](ARCHITECTURE.md) |
 | POC 后处理实验、共享 WIM/ISO 库、oscdimg 变化 | [MODULE_POC.md](MODULE_POC.md)、[MODULE_PACKAGING.md](MODULE_PACKAGING.md)，若主项目同步变更也更新主项目模块文档 |
 
