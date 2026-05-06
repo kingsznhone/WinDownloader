@@ -2,35 +2,21 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>10.0.26100.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
     <RootNamespace>WindowsImageDownloader</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
-    <WinUISDKReferences>false</WinUISDKReferences>
+    <WinUISDKReferences>true</WinUISDKReferences>
     <WindowsPackageType>None</WindowsPackageType>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
     <EnableMsixTooling>false</EnableMsixTooling>
-    <PublishAot>false</PublishAot>
-    <PublishReadyToRun>false</PublishReadyToRun>
-    <PublishTrimmed>false</PublishTrimmed>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  <ItemGroup>
-    <Page Remove="Views\Controls\DownloadTaskItemControl.xaml" />
-    <Page Remove="Views\Controls\TagControl.xaml" />
-    <Page Remove="Views\Pages\DownloadPage.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Page Include="Views\Controls\TagControl.xaml" />
-    <Page Include="Views\Controls\DownloadTaskItemControl.xaml" />
-    <Page Include="Views\Pages\DownloadPage.xaml" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -50,7 +36,6 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
     <PackageReference Include="Downloader" Version="5.4.0" />
-    <PackageReference Include="ManagedWimLib" Version="2.6.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
@@ -59,7 +44,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Oscdimg\**\*">
+    <ProjectReference Include="..\WindowsImageDownloader.Iso\WindowsImageDownloader.Iso.csproj" />
+    <ProjectReference Include="..\WindowsImageDownloader.Wim\WindowsImageDownloader.Wim.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Oscdimg\oscdimg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

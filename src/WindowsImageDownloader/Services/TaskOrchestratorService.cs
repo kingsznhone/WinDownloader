@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using Microsoft.Data.Sqlite;
 using WindowsImageDownloader.Interfaces;
+using WindowsImageDownloader.Iso;
 using WindowsImageDownloader.Models;
 
 namespace WindowsImageDownloader.Services;

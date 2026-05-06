@@ -7,8 +7,10 @@
     xmlns:controls="using:WindowsImageDownloader.Views.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewmodels="using:WindowsImageDownloader.ViewModels"
     x:Name="Root"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    d:DataContext="{d:DesignInstance Type=viewmodels:DownloadTaskItemViewModel, IsDesignTimeCreatable=False}">
 
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -28,81 +30,19 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Row 0: Title + badge tags (same layout as RawFileItemControl) -->
-            <Grid Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <controls:RawFileGroupSummaryControl
+                Grid.Row="0"
+                FileGroup="{Binding Task.FileGroup}"
+                SubtitleText="{Binding Task.FileName}"
+                HashText="{Binding Task.Sha256}" />
 
-                <TextBlock
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    FontSize="18"
-                    FontWeight="SemiBold"
-                    Text="{Binding FileName}"
-                    TextTrimming="CharacterEllipsis" />
-
-                <StackPanel
-                    Grid.Column="1"
-                    Margin="12,0,0,0"
-                    Orientation="Horizontal"
-                    Spacing="6"
-                    VerticalAlignment="Center">
-                    <controls:TagControl
-                        Text="{Binding LanguageText}"
-                        Type="Primary" />
-                    <controls:TagControl
-                        Text="{Binding EditionGroupText}"
-                        Type="{Binding EditionGroupTagType}" />
-                    <controls:TagControl
-                        Text="{Binding RetailText}"
-                        Type="{Binding RetailTagType}" />
-                    <controls:TagControl
-                        Text="{Binding Architecture}"
-                        Type="{Binding ArchTagType}" />
-                    <controls:TagControl
-                        Text="{Binding SizeText}"
-                        Type="Primary" />
-                </StackPanel>
-            </Grid>
-
-            <!-- Row 1: SHA-256 (monospace) -->
-            <TextBlock
-                Grid.Row="1"
-                FontFamily="Consolas"
-                FontSize="11"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Text="{Binding Sha256}"
-                TextTrimming="CharacterEllipsis" />
-
-            <!-- Row 2: Editions chip list -->
-            <ItemsControl
-                Grid.Row="2"
-                ItemsSource="{Binding Editions}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <controls:WrapPanel HorizontalSpacing="6" VerticalSpacing="6" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <controls:TagControl
-                            Text="{Binding}"
-                            Type="Default" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <!-- Row 3: Download progress (Queued / Downloading / Verifying) -->
+            <!-- Row 1: Download progress (Queued / Downloading / Verifying) -->
             <Grid
-                Grid.Row="3"
+                Grid.Row="1"
                 RowSpacing="6"
-                Visibility="{Binding ShowDownloadProgress, Converter={StaticResource BoolToVisibilityConverter}}">
+                Visibility="{Binding ShowDownloadProgress, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -120,8 +60,8 @@
                         Grid.Column="0"
                         Minimum="0"
                         Maximum="1"
-                        Value="{Binding Progress}"
-                        IsIndeterminate="{Binding IsVerifying}"
+                        Value="{Binding Progress, Mode=OneWay}"
+                        IsIndeterminate="{Binding IsVerifying, Mode=OneWay}"
                         VerticalAlignment="Center"
                         Height="6" />
 
@@ -130,7 +70,7 @@
                         VerticalAlignment="Center"
                         FontSize="12"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="{Binding SpeedText}"
+                        Text="{Binding SpeedText, Mode=OneWay}"
                         MinWidth="84"
                         TextAlignment="Right" />
 
@@ -139,7 +79,7 @@
                         Grid.Column="2"
                         VerticalAlignment="Center"
                         Command="{Binding PauseCommand}"
-                        Visibility="{Binding CanPause, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Visibility="{Binding CanPause, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE769;" />
                             <TextBlock Text="暂停" />
@@ -151,7 +91,7 @@
                         Grid.Column="2"
                         VerticalAlignment="Center"
                         Command="{Binding ResumeCommand}"
-                        Visibility="{Binding CanResume, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Visibility="{Binding CanResume, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE768;" />
                             <TextBlock Text="继续" />
@@ -163,10 +103,10 @@
                         Grid.Column="3"
                         VerticalAlignment="Center"
                         Command="{Binding CancelCommand}"
-                        Visibility="{Binding CanCancel, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Visibility="{Binding CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE711;" />
-                            <TextBlock Text="{Binding CancelButtonText}" />
+                            <TextBlock Text="{Binding CancelButtonText, Mode=OneWay}" />
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -176,15 +116,15 @@
                     Grid.Row="1"
                     FontSize="11"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{Binding StatusText}"
-                    Visibility="{Binding HasStatusText, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    Text="{Binding StatusText, Mode=OneWay}"
+                    Visibility="{Binding HasStatusText, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
             </Grid>
 
-            <!-- Row 4: ISO conversion progress -->
+            <!-- Row 2: ISO conversion progress -->
             <Grid
-                Grid.Row="4"
+                Grid.Row="2"
                 RowSpacing="6"
-                Visibility="{Binding ShowIsoProgress, Converter={StaticResource BoolToVisibilityConverter}}">
+                Visibility="{Binding ShowIsoProgress, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -197,53 +137,53 @@
                     FontSize="12"
                     FontWeight="SemiBold"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{Binding IsoMainStatusText}"
+                    Text="{Binding IsoMainStatusText, Mode=OneWay}"
                     TextTrimming="CharacterEllipsis" />
 
                 <ProgressBar
                     Grid.Row="1"
                     Minimum="0"
                     Maximum="1"
-                    Value="{Binding IsoMainProgress}"
+                    Value="{Binding IsoMainProgress, Mode=OneWay}"
                     Height="6" />
 
                 <TextBlock
                     Grid.Row="2"
                     FontSize="11"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{Binding IsoSubStatusText}"
+                    Text="{Binding IsoSubStatusText, Mode=OneWay}"
                     TextTrimming="CharacterEllipsis"
-                    Visibility="{Binding HasIsoSubStatusText, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    Visibility="{Binding HasIsoSubStatusText, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                 <ProgressBar
                     Grid.Row="3"
                     Minimum="0"
                     Maximum="1"
-                    Value="{Binding IsoSubProgress}"
-                    IsIndeterminate="{Binding IsIsoSubProgressIndeterminate}"
+                    Value="{Binding IsoSubProgress, Mode=OneWay}"
+                    IsIndeterminate="{Binding IsIsoSubProgressIndeterminate, Mode=OneWay}"
                     Height="4" />
             </Grid>
 
-            <!-- Row 5: Operation and error messages -->
-            <StackPanel Grid.Row="5" Spacing="4">
+            <!-- Row 3: Operation and error messages -->
+            <StackPanel Grid.Row="3" Spacing="4">
                 <TextBlock
                     FontSize="12"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{Binding OperationMessage}"
+                    Text="{Binding OperationMessage, Mode=OneWay}"
                     TextWrapping="WrapWholeWords"
-                    Visibility="{Binding HasOperationMessage, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    Visibility="{Binding HasOperationMessage, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                 <TextBlock
                     FontSize="12"
                     Foreground="#E81123"
-                    Text="{Binding ErrorMessage}"
+                    Text="{Binding ErrorMessage, Mode=OneWay}"
                     TextWrapping="WrapWholeWords"
-                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    Visibility="{Binding HasError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
             </StackPanel>
 
-            <!-- Row 6: Action bar – visible once ESD download completes -->
+            <!-- Row 4: Action bar – visible once ESD download completes -->
             <Grid
-                Grid.Row="6"
-                Visibility="{Binding ShowActionBar, Converter={StaticResource BoolToVisibilityConverter}}">
+                Grid.Row="4"
+                Visibility="{Binding ShowActionBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -255,10 +195,16 @@
                     Grid.Column="0"
                     HorizontalAlignment="Left"
                     Command="{Binding DeleteCommand}"
-                    Background="#E81123">
+                    Style="{StaticResource AccentButtonStyle}">
+                    <Button.Resources>
+                        <SolidColorBrush x:Key="AccentButtonBackground"                   Color="#E81123" />
+                        <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver"        Color="#C50F1F" />
+                        <SolidColorBrush x:Key="AccentButtonBackgroundPressed"            Color="#A80000" />
+                        <SolidColorBrush x:Key="AccentButtonBackgroundDisabled"           Color="#99E81123" />
+                    </Button.Resources>
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontSize="12" Glyph="&#xE74D;" Foreground="White" />
-                        <TextBlock Text="删除文件" Foreground="White" />
+                        <FontIcon FontSize="12" Glyph="&#xE74D;" />
+                        <TextBlock Text="删除文件" />
                     </StackPanel>
                 </Button>
 
@@ -270,7 +216,7 @@
                     <Button Command="{Binding ConvertToIsoCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE8B5;" />
-                            <TextBlock Text="{Binding ConvertToIsoButtonText}" />
+                            <TextBlock Text="{Binding ConvertToIsoButtonText, Mode=OneWay}" />
                         </StackPanel>
                     </Button>
 

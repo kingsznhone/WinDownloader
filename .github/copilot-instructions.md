@@ -4,7 +4,7 @@
 
 主 WinUI 应用是 ESD 下载 + ISO 转换工具：产品目录获取、ESD 下载、SHA-256 校验、SQLite 任务持久化、下载任务 UI 管理，以及下载完成后的可选 ESD 到 ISO 转换。
 
-主项目已经集成 `ManagedWimLib` 和随输出复制的 `Oscdimg` 工具目录。不要在没有重新设计的情况下加入 `OutputFormat` 设置、WIM/ISO 持久化任务字段或下载任务 `TaskState.Converting`；当前 ISO 转换状态通过独立快照传递给 UI，不写入 SQLite。
+主项目通过共享库集成 ISO 转换：`WindowsImageDownloader.Wim` 封装 `ManagedWimLib`，`WindowsImageDownloader.Iso` 封装 ESD→ISO 流水线和随输出复制的 `Oscdimg\oscdimg.exe`。默认安装映像输出为复用官方 solid LZMS 资源的 `sources\install.wim`。不要在没有重新设计的情况下加入 `OutputFormat` 设置、WIM/ISO 持久化任务字段或下载任务 `TaskState.Converting`；当前 ISO 转换状态通过独立快照传递给 UI，不写入 SQLite。
 
 ## 技术栈
 
@@ -13,7 +13,7 @@
 - MVVM: CommunityToolkit.Mvvm (`ObservableObject`, `[RelayCommand]`)
 - DI / 生命周期: `Microsoft.Extensions.Hosting` + `IHostedService`
 - 下载引擎: Downloader NuGet，内部每个下载创建独立 Downloader 实例
-- ISO 转换: ManagedWimLib + bundled Oscdimg
+- ISO 转换: `WindowsImageDownloader.Wim` + `WindowsImageDownloader.Iso` + bundled Oscdimg
 - 数据库: Microsoft.Data.Sqlite
 - 设置存储: JSON 文件
 - 打包: 非 MSIX 解包部署 (`WindowsPackageType=None`)
@@ -32,16 +32,12 @@ src/WindowsImageDownloader/
 │   ├── IDownloadService.cs
 │   ├── IDownloadTaskPathService.cs
 │   ├── IEsdDownloadPipeline.cs
-│   ├── IEsdToIsoConversionService.cs
-│   ├── IIsoCreationService.cs
 │   ├── ITaskOrchestratorService.cs
 │   ├── IUpdateCatalogService.cs
-│   └── IWimProcessingService.cs
+│   └── ...
 ├── Models/                             # ESD 下载、ISO 转换和 UI 模型
 │   ├── CatalogOption.cs
-│   ├── ConversionSession.cs
 │   ├── DownloadTask.cs
-│   ├── EsdToIso*.cs / Iso*.cs / Wim*.cs
 │   ├── RawFile.cs / RawFileGroup.cs
 │   ├── TagType.cs
 │   └── TaskState.cs
@@ -51,21 +47,28 @@ src/WindowsImageDownloader/
 │   ├── DownloadService.cs
 │   ├── DownloadTaskPathService.cs
 │   ├── EsdDownloadPipeline.cs
-│   ├── EsdToIsoConversionService.cs
-│   ├── OscdimgIsoCreationService.cs
 │   ├── TaskOrchestratorService.cs
 │   ├── UpdateCatalogService.cs
-│   ├── WimProcessingService.cs
 │   ├── DownloadTaskSnapshot.cs
 │   └── TaskOperationResult.cs
 ├── ViewModels/
 └── Views/
 
+src/WindowsImageDownloader.Wim/             # ManagedWimLib 封装库
+├── IWimProcessingService.cs
+├── Models/Wim*.cs
+└── Services/WimProcessingService.cs
+
+src/WindowsImageDownloader.Iso/             # ESD→ISO 流水线和 oscdimg 后端库
+├── IEsdToIsoConversionService.cs
+├── IIsoCreationService.cs
+├── Models/ConversionSession.cs / EsdToIso*.cs / Iso*.cs
+└── Services/EsdToIsoConversionService.cs / OscdimgIsoCreationService.cs
+
 src/POC/                                # 控制台验证/对照宿主
 ├── Program.cs
-├── Interfaces/
-├── Models/
-└── Services/
+├── README.md
+└── Oscdimg/
 ```
 
 ## DI 注册
@@ -98,8 +101,9 @@ DownloadTaskItemViewModel.ConvertToIsoAsync
   → TaskOrchestratorService.ConvertToIsoAsync
   → 单并发 ISO conversion worker
   → EsdToIsoConversionService.ConvertAsync
-  → WimProcessingService.GetImagesAsync / ExtractImageAsync / ExportImagesAsync
-  → OscdimgIsoCreationService.CreateIsoAsync
+  → WindowsImageDownloader.Wim.WimProcessingService.GetImagesAsync / ExtractImageAsync / ExportImagesAsync
+  → image 4..n 默认复用官方 solid LZMS 资源写入 sources\install.wim
+  → WindowsImageDownloader.Iso.OscdimgIsoCreationService.CreateIsoAsync
   → EsdToIsoTaskSnapshot 合并到 DownloadTaskSnapshot
   → DownloadTaskItemViewModel 显示 main/sub progress
 ```

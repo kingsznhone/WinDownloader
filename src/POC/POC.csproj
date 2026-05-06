@@ -8,12 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ManagedWimLib" Version="2.6.0" />
     <PackageReference Include="System.CommandLine" Version="3.0.0-preview.3.26207.106" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Oscdimg\**\*">
+    <ProjectReference Include="..\WindowsImageDownloader.Iso\WindowsImageDownloader.Iso.csproj" />
+    <ProjectReference Include="..\WindowsImageDownloader.Wim\WindowsImageDownloader.Wim.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Oscdimg\oscdimg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

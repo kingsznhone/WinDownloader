@@ -18,16 +18,7 @@ public sealed class CacheService : ICacheService
     private const string CreateTableSql = """
         CREATE TABLE IF NOT EXISTS DownloadTasks (
             Sha256              TEXT    NOT NULL PRIMARY KEY,
-            LanguageCode        TEXT    NOT NULL,
-            Language            TEXT    NOT NULL,
-            Architecture        TEXT    NOT NULL,
-            EditionLoc          TEXT    NOT NULL,
-            Edition             TEXT    NOT NULL,
-            FileName            TEXT    NOT NULL,
-            Editions            TEXT    NOT NULL DEFAULT '[]',
-            DownloadUrl         TEXT    NOT NULL,
-            TotalBytes          INTEGER NOT NULL,
-            IsRetailOnly        INTEGER NOT NULL DEFAULT 0,
+            RawFileGroup        TEXT    NOT NULL,
             State               INTEGER NOT NULL DEFAULT 0,
             DownloadedBytes     INTEGER NOT NULL DEFAULT 0,
             ErrorMessage        TEXT,
@@ -40,11 +31,9 @@ public sealed class CacheService : ICacheService
     /// All column names that must exist in DownloadTasks.
     /// Any mismatch triggers an automatic wipe-and-rebuild.
     /// </summary>
-    private static readonly HashSet<string> RequiredColumns =
+    private static readonly HashSet<string> _requiredColumns =
     [
-        "Sha256", "LanguageCode", "Language", "Architecture", "EditionLoc", "Edition",
-        "FileName", "Editions", "DownloadUrl", "TotalBytes", "IsRetailOnly",
-        "State", "DownloadedBytes", "ErrorMessage", "CreatedAt", "UpdatedAt",
+        "Sha256", "RawFileGroup", "State", "DownloadedBytes", "ErrorMessage", "CreatedAt", "UpdatedAt",
     ];
 
     // ── Connection string ─────────────────────────────────────────────────────
@@ -112,7 +101,7 @@ public sealed class CacheService : ICacheService
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             existing.Add(reader.GetString(reader.GetOrdinal("name")));
 
-        return RequiredColumns.IsSubsetOf(existing);
+        return _requiredColumns.IsSubsetOf(existing);
     }
 
     /// <inheritdoc/>
@@ -125,13 +114,9 @@ public sealed class CacheService : ICacheService
 
         cmd.CommandText = """
             INSERT INTO DownloadTasks
-                (Sha256, LanguageCode, Language, Architecture, EditionLoc, Edition,
-                 FileName, Editions, DownloadUrl, TotalBytes, IsRetailOnly,
-                 State, DownloadedBytes, ErrorMessage, CreatedAt, UpdatedAt)
+                (Sha256, RawFileGroup, State, DownloadedBytes, ErrorMessage, CreatedAt, UpdatedAt)
             VALUES
-                (@sha256, @languageCode, @language, @architecture, @editionLoc, @edition,
-                 @fileName, @editions, @downloadUrl, @totalBytes, @isRetailOnly,
-                 @state, @downloadedBytes, @errorMessage, @createdAt, @updatedAt);
+                (@sha256, @rawFileGroup, @state, @downloadedBytes, @errorMessage, @createdAt, @updatedAt);
             """;
 
         BindAllParameters(cmd, task);
@@ -220,16 +205,7 @@ public sealed class CacheService : ICacheService
     private static void BindAllParameters(SqliteCommand cmd, DownloadTask task)
     {
         cmd.Parameters.AddWithValue("@sha256",          task.Sha256);
-        cmd.Parameters.AddWithValue("@languageCode",    task.LanguageCode);
-        cmd.Parameters.AddWithValue("@language",        task.Language);
-        cmd.Parameters.AddWithValue("@architecture",    task.Architecture);
-        cmd.Parameters.AddWithValue("@editionLoc",      task.EditionLoc);
-        cmd.Parameters.AddWithValue("@edition",         task.Edition);
-        cmd.Parameters.AddWithValue("@fileName",        task.FileName);
-        cmd.Parameters.AddWithValue("@editions",        JsonSerializer.Serialize(task.Editions));
-        cmd.Parameters.AddWithValue("@downloadUrl",     task.DownloadUrl);
-        cmd.Parameters.AddWithValue("@totalBytes",      task.TotalBytes);
-        cmd.Parameters.AddWithValue("@isRetailOnly",    task.IsRetailOnly ? 1 : 0);
+        cmd.Parameters.AddWithValue("@rawFileGroup",    JsonSerializer.Serialize(task.FileGroup));
         cmd.Parameters.AddWithValue("@state",           (int)task.State);
         cmd.Parameters.AddWithValue("@downloadedBytes", task.DownloadedBytes);
         cmd.Parameters.AddWithValue("@errorMessage",    task.ErrorMessage ?? (object)DBNull.Value);
@@ -240,31 +216,20 @@ public sealed class CacheService : ICacheService
     /// <summary>Maps a reader row to a <see cref="DownloadTask"/>.</summary>
     private static DownloadTask MapToTask(SqliteDataReader reader)
     {
-        var totalBytes = reader.GetInt64(reader.GetOrdinal("TotalBytes"));
         var downloadedBytes = reader.GetInt64(reader.GetOrdinal("DownloadedBytes"));
         var state = (TaskState)reader.GetInt32(reader.GetOrdinal("State"));
+        var fileGroup = JsonSerializer.Deserialize<RawFileGroup>(
+            reader.GetString(reader.GetOrdinal("RawFileGroup")))
+            ?? throw new JsonException("RawFileGroup payload is empty.");
 
         return new DownloadTask
         {
-            Sha256          = reader.GetString(reader.GetOrdinal("Sha256")),
-            LanguageCode    = reader.GetString(reader.GetOrdinal("LanguageCode")),
-            Language        = reader.GetString(reader.GetOrdinal("Language")),
-            Architecture    = reader.GetString(reader.GetOrdinal("Architecture")),
-            EditionLoc      = reader.GetString(reader.GetOrdinal("EditionLoc")),
-            Edition         = reader.GetString(reader.GetOrdinal("Edition")),
-            FileName        = reader.GetString(reader.GetOrdinal("FileName")),
-            Editions        = JsonSerializer.Deserialize<List<string>>(
-                                  reader.IsDBNull(reader.GetOrdinal("Editions"))
-                                      ? "[]"
-                                      : reader.GetString(reader.GetOrdinal("Editions"))) ?? [],
-            DownloadUrl     = reader.GetString(reader.GetOrdinal("DownloadUrl")),
-            TotalBytes      = totalBytes,
-            IsRetailOnly    = reader.GetInt32(reader.GetOrdinal("IsRetailOnly")) != 0,
+            FileGroup       = fileGroup,
             State           = state,
             DownloadedBytes = downloadedBytes,
             Progress        = state == TaskState.Completed
                 ? 1.0
-                : totalBytes > 0 ? Math.Clamp((double)downloadedBytes / totalBytes, 0, 1) : 0,
+                : fileGroup.File.Size > 0 ? Math.Clamp((double)downloadedBytes / fileGroup.File.Size, 0, 1) : 0,
             ErrorMessage    = reader.IsDBNull(reader.GetOrdinal("ErrorMessage"))
                                   ? null
                                   : reader.GetString(reader.GetOrdinal("ErrorMessage")),

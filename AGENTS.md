@@ -6,7 +6,7 @@
 
 WindowsImageDownloader 是一个基于 WinUI 3 + .NET 10 的 Windows 安装映像下载工具。主应用当前负责：从 Microsoft Update Catalog 获取产品目录、筛选 ESD 文件、多线程断点续传下载、SHA-256 校验、SQLite 任务持久化、WinUI 下载任务管理，以及下载完成后的可选 ESD 到 ISO 转换。
 
-ISO 转换已经接入主项目：ManagedWimLib 负责 ESD/WIM 操作，`Oscdimg` 工具目录随主项目复制到输出目录。`src/POC` 仍保留为控制台验证和对照宿主。主项目当前不引入 `OutputFormat` 设置，不把 ISO 转换写入 SQLite schema，也不扩展下载任务 `TaskState` 为 `Converting`；转换进度通过独立 `EsdToIsoTaskSnapshot` 传递给 UI。
+ISO 转换已经接入主项目：`src/WindowsImageDownloader.Wim` 封装 ManagedWimLib，`src/WindowsImageDownloader.Iso` 封装 ESD→ISO 流水线和 oscdimg 后端，WinUI 与 `src/POC` 共同引用这两个库。默认安装映像输出为复用官方 solid LZMS 资源的 `sources\install.wim`。主项目当前不引入 `OutputFormat` 设置，不把 ISO 转换写入 SQLite schema，也不扩展下载任务 `TaskState` 为 `Converting`；转换进度通过独立 `EsdToIsoTaskSnapshot` 传递给 UI。
 
 ## 文档体系
 
@@ -20,7 +20,7 @@ ISO 转换已经接入主项目：ManagedWimLib 负责 ESD/WIM 操作，`Oscdimg
 | [MODULE_UI.md](docs/MODULE_UI.md) | WinUI 页面、控件、ViewModel |
 | [MODULE_SETTINGS.md](docs/MODULE_SETTINGS.md) | 设置服务和设置页 |
 | [MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md) | 打包与发布 |
-| [MODULE_POC.md](docs/MODULE_POC.md) | POC 项目和 WIM/ISO 验证区 |
+| [MODULE_POC.md](docs/MODULE_POC.md) | POC 控制台宿主和 WIM/ISO 共享库验证 |
 
 ## 快速避坑
 
@@ -34,5 +34,5 @@ ISO 转换已经接入主项目：ManagedWimLib 负责 ESD/WIM 操作，`Oscdimg
 | SQLite schema | 下载任务 schema 不保存 ISO 转换状态；不兼容或损坏时自动删除重建 |
 | 路径职责 | ESD、ISO 和 `.staging` 路径由 `IDownloadTaskPathService` 统一解析 |
 | 校验职责 | ESD 下载与 SHA-256 校验由 `IEsdDownloadPipeline` 封装 |
-| WIM 生命周期 | `WimProcessingService` 是 Singleton，内部串行化 WIM 操作并在 dispose 时清理 ManagedWimLib 全局状态 |
+| WIM 生命周期 | `WindowsImageDownloader.Wim.WimProcessingService` 是 Singleton，内部串行化 WIM 操作并在 dispose 时清理 ManagedWimLib 全局状态 |
 | 设置扩展 | `IAppSettings` → `AppSettingsService` → ViewModel → XAML → 文档 |

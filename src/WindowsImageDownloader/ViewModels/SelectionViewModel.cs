@@ -372,7 +372,7 @@ public sealed partial class SelectionViewModel : ObservableObject
 
         try
         {
-            var task = DownloadTask.FromRawFile(group.File, group.Editions);
+            var task = DownloadTask.FromRawFileGroup(group);
             var result = await _orchestrator.EnqueueAsync(task);
 
             OperationSeverity = result.Succeeded

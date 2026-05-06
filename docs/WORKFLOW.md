@@ -24,7 +24,7 @@
 | UI 层 | [MODULE_UI.md](MODULE_UI.md) | 修改 WinUI 页面、控件、ViewModel、导航或绑定线程时 |
 | 设置 | [MODULE_SETTINGS.md](MODULE_SETTINGS.md) | 修改 IAppSettings、设置默认值、设置页或 JSON 存储时 |
 | 打包发布 | [MODULE_PACKAGING.md](MODULE_PACKAGING.md) | 修改 csproj、NuGet、Windows App SDK、发布参数、打包资产时 |
-| POC 验证 | [MODULE_POC.md](MODULE_POC.md) | 修改 `src/POC`、ManagedWimLib、oscdimg、WIM/ISO 验证逻辑时 |
+| POC 验证 | [MODULE_POC.md](MODULE_POC.md) | 修改 `src/POC`、`WindowsImageDownloader.Wim`、`WindowsImageDownloader.Iso`、oscdimg、WIM/ISO 验证逻辑时 |
 
 ## 推荐阅读路径
 
@@ -84,7 +84,7 @@ flowchart TD
 - 复杂区域使用 `// ── Section ───` 风格分隔。
 - 不把路径拼接放回模型或 UI，使用 `IDownloadTaskPathService`。
 - 不把下载/校验细节放回 orchestrator，使用 `IEsdDownloadPipeline`。
-- 不把 WIM/oscdimg 细节放进 ViewModel，使用 `IEsdToIsoConversionService` 及其后端服务。
+- 不把 WIM/oscdimg 细节放进 ViewModel，使用共享库中的 `IEsdToIsoConversionService` 及其后端服务。
 
 ### 4. 更新文档
 
@@ -101,7 +101,7 @@ flowchart TD
 | ViewModel、页面、控件、绑定线程变化 | [MODULE_UI.md](MODULE_UI.md)，必要时更新对应业务模块文档 |
 | 设置项、默认值、范围、JSON key 变化 | [MODULE_SETTINGS.md](MODULE_SETTINGS.md) |
 | NuGet、TargetFramework、Windows App SDK、发布配置变化 | [MODULE_PACKAGING.md](MODULE_PACKAGING.md)，必要时更新 [ARCHITECTURE.md](ARCHITECTURE.md) |
-| POC 后处理实验、ManagedWimLib、oscdimg 变化 | [MODULE_POC.md](MODULE_POC.md)、[MODULE_PACKAGING.md](MODULE_PACKAGING.md)，若主项目同步变更也更新主项目模块文档 |
+| POC 后处理实验、共享 WIM/ISO 库、oscdimg 变化 | [MODULE_POC.md](MODULE_POC.md)、[MODULE_PACKAGING.md](MODULE_PACKAGING.md)，若主项目同步变更也更新主项目模块文档 |
 
 ### 5. 验证
 
@@ -145,7 +145,7 @@ dotnet build .\src\WindowsImageDownloader\WindowsImageDownloader.csproj -nologo 
 ### 修改 ISO 转换
 
 1. 阅读 [MODULE_DOWNLOAD.md](MODULE_DOWNLOAD.md)、[MODULE_UI.md](MODULE_UI.md)、[MODULE_MODELS.md](MODULE_MODELS.md)。
-2. 检查 `TaskOrchestratorService`、`EsdToIsoConversionService`、`WimProcessingService`、`OscdimgIsoCreationService`、`DownloadTaskPathService`。
+2. 检查 `TaskOrchestratorService`、`WindowsImageDownloader.Iso`、`WindowsImageDownloader.Wim`、`DownloadTaskPathService`。
 3. 保持 ISO 转换单并发；转换 worker 与下载 worker 一起计入 `ActiveTaskCount`。
 4. `.staging` 目录由 `IDownloadTaskPathService.ResolveIsoStagingDirectory()` 解析，默认完成或取消后尽力清理。
 5. 不把转换快照写入 SQLite；需要恢复/重试时先设计新的持久化模型。

@@ -53,15 +53,10 @@
 
 | 属性 | 说明 |
 |------|------|
-| `Sha256` | 主键，等于目录条目的 SHA-256 |
-| `LanguageCode` / `Language` | 语言信息 |
-| `Architecture` | 架构 |
-| `EditionLoc` / `Edition` | 版本组和代表版本 |
-| `Editions` | 同一 ESD 内的所有版本 |
-| `FileName` | 原始 ESD 文件名 |
-| `DownloadUrl` | 下载 URL |
-| `TotalBytes` | 文件大小 |
-| `IsRetailOnly` | 是否仅零售版 |
+| `FileGroup` | 原始 `RawFileGroup`，包含代表 `RawFile` 和完整 editions 列表 |
+| `Sha256` | 从 `FileGroup.File.Sha256` 转发，作为缓存主键和任务标识 |
+| `LanguageCode` / `Architecture` / `FileName` | 从 `FileGroup.File` 转发，供路径解析和下载流程使用 |
+| `DownloadUrl` / `TotalBytes` | 从 `FileGroup.File.FilePath` / `Size` 转发，供下载和进度计算使用 |
 
 ### 运行时字段
 
@@ -78,7 +73,7 @@
 ### 创建方式
 
 ```csharp
-var task = DownloadTask.FromRawFile(group.File, group.Editions);
+var task = DownloadTask.FromRawFileGroup(group);
 ```
 
 ## TaskState
@@ -103,10 +98,11 @@ public enum TaskState
 | 属性 | 说明 |
 |------|------|
 | `SourceEsdPath` | 本地 ESD 文件路径 |
-| `StagingRoot` | ISO 转换 staging 目录；主应用使用 `{任务目录}\.staging` |
+| `StagingDirectory` | ISO 转换 staging 目录；主应用使用 `{任务目录}\.staging` |
 | `VolumeLabel` | ISO 卷标，默认 `ESD_ISO` |
 | `KeepIntermediateFiles` | 是否保留中间文件；主应用默认为 `false` |
-| `InstallCompression` | `install.esd` 压缩算法，默认 `LZMS` |
+| `InstallCompression` | `install.wim` 压缩算法，默认 `LZMS` |
+| `RecompressInstallImage` | 是否强制重压安装映像；默认 `false`，即复用官方 solid LZMS 资源写入 `install.wim` |
 
 ### EsdToIsoTaskSnapshot
 
@@ -122,7 +118,7 @@ public enum TaskState
 | `WimProgress` | ManagedWimLib 子进度 |
 | `IsoProgress` | oscdimg 子进度 |
 
-`ConversionSession` 在服务内部维护阶段高水位，保证 `Running` 快照的整体进度不回退。主应用的 staging 目录直接使用 `StagingRoot`；POC 为了保留独立验证目录，会在 `StagingRoot` 下再使用 `staging` 子目录。
+`ConversionSession` 在服务内部维护阶段高水位，保证 `Running` 快照的整体进度不回退。主应用和 POC 都向共享库传入真实 staging 目录；POC 只是在 `--output-root` 下自行拼出 `staging` 子目录后再传入。
 
 ### WIM / ISO 模型
 

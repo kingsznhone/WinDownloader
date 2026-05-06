@@ -6,6 +6,8 @@
     <File Path="../doc/roadmap.md" />
   </Folder>
   <Project Path="POC/POC.csproj" Id="ed5b7cc9-2cd1-4081-b4ca-ae2747dff117" />
+  <Project Path="WindowsImageDownloader.Wim/WindowsImageDownloader.Wim.csproj" />
+  <Project Path="WindowsImageDownloader.Iso/WindowsImageDownloader.Iso.csproj" />
   <Project Path="WindowsImageDownloader/WindowsImageDownloader.csproj">
     <Platform Project="x64" />
     <Deploy />

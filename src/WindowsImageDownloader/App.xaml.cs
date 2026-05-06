@@ -2,8 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
 using WindowsImageDownloader.Interfaces;
+using WindowsImageDownloader.Iso;
 using WindowsImageDownloader.Services;
 using WindowsImageDownloader.ViewModels;
+using WindowsImageDownloader.Wim;
 
 namespace WindowsImageDownloader;
 

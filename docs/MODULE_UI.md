@@ -15,6 +15,7 @@ UI 层基于 WinUI 3 `NavigationView`，使用 CommunityToolkit.Mvvm 实现 MVVM
 | `Views/Pages/DownloadPage.xaml` / `.cs` | 下载任务页 |
 | `Views/Pages/SettingsPage.xaml` / `.cs` | 设置页 |
 | `Views/Controls/TagControl.xaml` / `.cs` | 标签控件 |
+| `Views/Controls/RawFileGroupSummaryControl.xaml` / `.cs` | 产品目录条目和下载任务共享的文件组摘要控件 |
 | `Views/Controls/RawFileItemControl.xaml` / `.cs` | 产品目录条目控件 |
 | `Views/Controls/DownloadTaskItemControl.xaml` / `.cs` | 下载任务卡片控件 |
 | `Views/Controls/WrapPanel.cs` | 简单换行面板 |
@@ -51,8 +52,10 @@ MainWindow
 入队时调用：
 
 ```csharp
-DownloadTask.FromRawFile(group.File, group.Editions)
+DownloadTask.FromRawFileGroup(group)
 ```
+
+`RawFileItemControl` 和 `DownloadTaskItemControl` 的顶部摘要都复用 `RawFileGroupSummaryControl`。公共控件绑定 `RawFileGroup`，摘要区显示文件名和 SHA-256；按钮、进度、ISO 转换和错误消息仍保留在各自 item 控件中。
 
 ## DownloadPageViewModel
 

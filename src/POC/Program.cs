@@ -2,8 +2,8 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.Text;
 using ManagedWimLib;
-using POC.Models;
-using POC.Services;
+using WindowsImageDownloader.Iso;
+using WindowsImageDownloader.Wim;
 
 namespace POC;
 
@@ -38,8 +38,19 @@ internal static class Program
 
         var installCompressionOption = new Option<CompressionType>("--install-compression")
         {
-            Description = "Compression algorithm for install.esd/wim. LZX or LZMS (default).",
+            Description = "Compression algorithm for install.wim. LZMS is the default fast path; LZX forces recompression.",
             DefaultValueFactory = _ => CompressionType.LZMS
+        };
+
+        var reuseInstallResourcesOption = new Option<bool>("--reuse-install-resources")
+        {
+            Description = "Reuse official solid LZMS ESD resources when building install.wim. This is the default.",
+            DefaultValueFactory = _ => true
+        };
+
+        var recompressInstallImageOption = new Option<bool>("--recompress-install-image")
+        {
+            Description = "Force install.wim recompression for benchmarking or alternate compression choices."
         };
 
         var isoOnlyOption = new Option<bool>("--iso-only")
@@ -54,6 +65,8 @@ internal static class Program
             volumeLabelOption,
             deleteIntermediateOption,
             installCompressionOption,
+            reuseInstallResourcesOption,
+            recompressInstallImageOption,
             isoOnlyOption
         };
 
@@ -64,6 +77,10 @@ internal static class Program
             var volumeLabel = parseResult.GetValue(volumeLabelOption)!;
             var keepIntermediateFiles = !parseResult.GetValue(deleteIntermediateOption);
             var installCompression = parseResult.GetValue(installCompressionOption);
+            var recompressInstallImage = parseResult.GetValue(recompressInstallImageOption) ||
+                installCompression != CompressionType.LZMS ||
+                !parseResult.GetValue(reuseInstallResourcesOption);
+            var reuseInstallResources = !recompressInstallImage;
             var isoOnly = parseResult.GetValue(isoOnlyOption);
 
             var sourcePath = Path.GetFullPath(source);
@@ -156,10 +173,20 @@ internal static class Program
 
                 var request = new EsdToIsoRequest(
                     sourcePath,
-                    resolvedStagingRoot,
+                    Path.Combine(resolvedStagingRoot, "staging"),
                     volumeLabel,
                     keepIntermediateFiles,
-                    installCompression);
+                    installCompression,
+                    RecompressInstallImage: recompressInstallImage);
+
+                Console.WriteLine("WindowsImageDownloader POC");
+                Console.WriteLine($"Source ESD: {sourcePath}");
+                Console.WriteLine($"Output root: {resolvedStagingRoot}");
+                Console.WriteLine($"Install export: {(reuseInstallResources ? "reuse official solid LZMS resources into install.wim" : "recompress install.wim")}");
+                Console.WriteLine($"Install compression: {installCompression}");
+                Console.WriteLine($"Console log: {consoleLogPath}");
+                Console.WriteLine();
+
                 using var wimService = new WimProcessingService();
                 var conversionService = new EsdToIsoConversionService(wimService, new OscdimgIsoCreationService());
                 conversionService.ProgressChanged += OnProgressChanged;
@@ -221,8 +248,12 @@ internal static class Program
         Console.WriteLine(result.Succeeded ? "Completed." : "Failed.");
         Console.WriteLine($"Staging: {result.StagingDirectory}");
         Console.WriteLine($"boot.wim: {result.BootWimPath}");
-        Console.WriteLine($"install.esd: {result.InstallEsdPath}");
+        Console.WriteLine($"install.wim: {result.InstallWimPath}");
         Console.WriteLine($"ISO: {result.IsoPath}");
+        Console.WriteLine($"Duration: {result.Duration}");
+        PrintFileSize("boot.wim", result.BootWimPath);
+        PrintFileSize("install.wim", result.InstallWimPath);
+        PrintFileSize("ISO", result.IsoPath);
 
         if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
         {
@@ -233,6 +264,16 @@ internal static class Program
         {
             Console.WriteLine($"Warning: {warning}");
         }
+    }
+
+    private static void PrintFileSize(string label, string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        Console.WriteLine($"{label} size: {FormatBytes((ulong)new FileInfo(path).Length)}");
     }
 
     private static void OnProgressChanged(object? sender, EsdToIsoTaskSnapshot snapshot)
@@ -281,7 +322,7 @@ internal static class Program
             EsdToIsoStage.InspectingSource => $"正在读取 ESD 映像信息{file}",
             EsdToIsoStage.ApplyingSetupMedia => $"正在展开 image 1 到 ISO staging{file}",
             EsdToIsoStage.BuildingBootWim => $"正在生成 boot.wim{file}",
-            EsdToIsoStage.BuildingInstallImage => $"正在生成 install.esd{file}",
+            EsdToIsoStage.BuildingInstallImage => $"正在生成 install.wim{file}",
             EsdToIsoStage.CreatingIso => snapshot.IsoProgress is not null
                 ? $"正在创建 ISO {snapshot.IsoProgress.Percent:0}%{file}"
                 : $"正在调用 oscdimg 创建 ISO{file}",

@@ -6,9 +6,10 @@
     xmlns:controls="using:WindowsImageDownloader.Views.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:models="using:WindowsImageDownloader.Models"
+    xmlns:viewmodels="using:WindowsImageDownloader.ViewModels"
     x:Name="Root"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    d:DataContext="{d:DesignInstance Type=viewmodels:RawFileItemViewModel, IsDesignTimeCreatable=False}">
 
     <Border
         Padding="16"
@@ -20,93 +21,18 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Row 0: Title + badge tags -->
-            <Grid Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <controls:RawFileGroupSummaryControl
+                Grid.Row="0"
+                FileGroup="{Binding FileGroup, ElementName=Root}"
+                SubtitleText="{Binding FileGroup.File.FileName, ElementName=Root}"
+                HashText="{Binding FileGroup.File.Sha256, ElementName=Root}" />
 
-                <TextBlock
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    FontSize="20"
-                    FontWeight="SemiBold"
-                    Text="{Binding FileGroup.File.DisplayName, ElementName=Root}"
-                    TextTrimming="CharacterEllipsis" />
-
-                <StackPanel
-                    Grid.Column="1"
-                    Margin="12,0,0,0"
-                    Orientation="Horizontal"
-                    Spacing="6"
-                    VerticalAlignment="Center">
-                    <controls:TagControl
-                        Text="{Binding FileGroup.File.LanguageLabel, ElementName=Root}"
-                        Type="Primary" />
-                    <controls:TagControl
-                        Text="{Binding FileGroup.File.EditionGroupText, ElementName=Root}"
-                        Type="{Binding FileGroup.File.EditionGroupTagType, ElementName=Root}" />
-                    <controls:TagControl
-                        Text="{Binding FileGroup.File.RetailText, ElementName=Root}"
-                        Type="{Binding FileGroup.File.RetailTagType, ElementName=Root}" />
-                    <controls:TagControl
-                        Text="{Binding FileGroup.File.Architecture, ElementName=Root}"
-                        Type="{Binding FileGroup.File.ArchTagType, ElementName=Root}" />
-                    <controls:TagControl
-                        Text="{Binding FileGroup.File.SizeText, ElementName=Root}"
-                        Type="Primary" />
-                </StackPanel>
-            </Grid>
-
-            <!-- Row 1: File name (monospace) -->
-            <TextBlock
-                Grid.Row="1"
-                FontFamily="Consolas"
-                FontSize="12"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Text="{Binding FileGroup.File.FileName, ElementName=Root}"
-                TextTrimming="CharacterEllipsis" />
-
-            <!-- Row 2: Editions chip list -->
-            <ItemsControl
-                Grid.Row="2"
-                ItemsSource="{Binding FileGroup.Editions, ElementName=Root}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <controls:WrapPanel HorizontalSpacing="6" VerticalSpacing="6" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <controls:TagControl
-                            Text="{Binding}"
-                            Type="Default" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <!-- Row 3: Download -->
-            <Grid Grid.Row="3">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{Binding FileGroup.File.Sha256, ElementName=Root}"
-                    FontFamily="Consolas" />
-
+            <!-- Row 1: Download -->
+            <Grid Grid.Row="1">
                 <Button
-                    Grid.Column="1"
+                    HorizontalAlignment="Right"
                     VerticalAlignment="Center"
                     Command="{Binding DownloadCommand, ElementName=Root}"
                     CommandParameter="{Binding FileGroup, ElementName=Root}">

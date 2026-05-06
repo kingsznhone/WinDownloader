@@ -6,7 +6,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ctk="using:CommunityToolkit.WinUI.Controls"
-    mc:Ignorable="d">
+    xmlns:viewmodels="using:WindowsImageDownloader.ViewModels"
+    mc:Ignorable="d"
+    d:DataContext="{d:DesignInstance Type=viewmodels:SettingsViewModel, IsDesignTimeCreatable=False}">
 
     <ScrollViewer Padding="24,16">
         <StackPanel Spacing="4"  HorizontalAlignment="Stretch">

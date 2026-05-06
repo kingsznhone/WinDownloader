@@ -11,9 +11,9 @@
 | 底层 HTTP 下载 | `IDownloadService` / `DownloadService` |
 | ESD 路径解析 | `IDownloadTaskPathService` / `DownloadTaskPathService` |
 | 下载 + SHA-256 校验 | `IEsdDownloadPipeline` / `EsdDownloadPipeline` |
-| ESD 到 ISO 转换 | `IEsdToIsoConversionService` / `EsdToIsoConversionService` |
-| WIM/ESD 原语 | `IWimProcessingService` / `WimProcessingService` |
-| ISO 创建后端 | `IIsoCreationService` / `OscdimgIsoCreationService` |
+| ESD 到 ISO 转换 | `WindowsImageDownloader.Iso` / `IEsdToIsoConversionService` / `EsdToIsoConversionService` |
+| WIM/ESD 原语 | `WindowsImageDownloader.Wim` / `IWimProcessingService` / `WimProcessingService` |
+| ISO 创建后端 | `WindowsImageDownloader.Iso` / `IIsoCreationService` / `OscdimgIsoCreationService` |
 | SQLite 任务缓存 | `ICacheService` / `CacheService` |
 | 下载和转换编排、UI 事件 | `ITaskOrchestratorService` / `TaskOrchestratorService` |
 
@@ -27,12 +27,12 @@
 | `Services/DownloadTaskPathService.cs` | 下载目录、ESD、ISO、临时路径实现 |
 | `Interfaces/IEsdDownloadPipeline.cs` | ESD 下载和校验接口 |
 | `Services/EsdDownloadPipeline.cs` | 调用下载服务并执行 SHA-256 校验 |
-| `Interfaces/IEsdToIsoConversionService.cs` | ESD 到 ISO 转换服务接口 |
-| `Services/EsdToIsoConversionService.cs` | 转换流水线实现 |
-| `Interfaces/IWimProcessingService.cs` | WIM/ESD 操作接口 |
-| `Services/WimProcessingService.cs` | ManagedWimLib 包装实现 |
-| `Interfaces/IIsoCreationService.cs` | ISO 创建接口 |
-| `Services/OscdimgIsoCreationService.cs` | oscdimg 后端实现 |
+| `../WindowsImageDownloader.Iso/IEsdToIsoConversionService.cs` | ESD 到 ISO 转换服务接口 |
+| `../WindowsImageDownloader.Iso/Services/EsdToIsoConversionService.cs` | 转换流水线实现 |
+| `../WindowsImageDownloader.Wim/IWimProcessingService.cs` | WIM/ESD 操作接口 |
+| `../WindowsImageDownloader.Wim/Services/WimProcessingService.cs` | ManagedWimLib 包装实现 |
+| `../WindowsImageDownloader.Iso/IIsoCreationService.cs` | ISO 创建接口 |
+| `../WindowsImageDownloader.Iso/Services/OscdimgIsoCreationService.cs` | oscdimg 后端实现 |
 | `Interfaces/ICacheService.cs` | 缓存服务接口 |
 | `Services/CacheService.cs` | SQLite 缓存实现 |
 | `Interfaces/ITaskOrchestratorService.cs` | 任务编排接口 |
@@ -96,16 +96,7 @@ VerifyAsync(task)
 ```sql
 CREATE TABLE IF NOT EXISTS DownloadTasks (
     Sha256              TEXT    NOT NULL PRIMARY KEY,
-    LanguageCode        TEXT    NOT NULL,
-    Language            TEXT    NOT NULL,
-    Architecture        TEXT    NOT NULL,
-    EditionLoc          TEXT    NOT NULL,
-    Edition             TEXT    NOT NULL,
-    FileName            TEXT    NOT NULL,
-    Editions            TEXT    NOT NULL DEFAULT '[]',
-    DownloadUrl         TEXT    NOT NULL,
-    TotalBytes          INTEGER NOT NULL,
-    IsRetailOnly        INTEGER NOT NULL DEFAULT 0,
+    RawFileGroup        TEXT    NOT NULL,
     State               INTEGER NOT NULL DEFAULT 0,
     DownloadedBytes     INTEGER NOT NULL DEFAULT 0,
     ErrorMessage        TEXT,
@@ -119,8 +110,9 @@ CREATE TABLE IF NOT EXISTS DownloadTasks (
 - 数据库路径：`%LocalAppData%\WindowsImageDownloader\cache.db`。
 - `RequiredColumns` 用于检测 schema 是否兼容。
 - schema 不兼容或数据库损坏时自动删除重建，最多重试一次。
-- `Editions` 以 JSON 数组存储。
+- `RawFileGroup` 以 JSON 存储原始目录文件组，包含代表 `RawFile` 和完整 editions 列表。
 - `Progress`、`SpeedBytesPerSecond`、`StatusText` 是运行时 UI 状态，不持久化。
+- 开发期 schema 重构不做旧平铺列迁移；旧缓存会按不兼容 schema 处理并重建。
 
 ## TaskOrchestratorService
 
@@ -196,9 +188,11 @@ WaitForIsoConversionSlotAsync
 
 ```text
 SourceEsdPath = ResolveEsdPath(task)
-StagingRoot = ResolveIsoStagingDirectory(task)  # {任务目录}\.staging
+StagingDirectory = ResolveIsoStagingDirectory(task)  # {任务目录}\.staging
 IsoPath = {任务目录}\{FileNameWithoutExtension}.iso
 KeepIntermediateFiles = false
+InstallCompression = LZMS
+RecompressInstallImage = false  # 默认复用官方 solid LZMS 资源写入 install.wim
 ```
 
 `EsdToIsoConversionService` 在开始时会清理旧 `.staging`，完成、失败或取消后在 `finally` 中再次尽力删除 `.staging`。删除失败会被吞掉；下次转换会重新尝试清理。

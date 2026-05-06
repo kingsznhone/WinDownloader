@@ -44,37 +44,39 @@ src/WindowsImageDownloader/bin/Release/net10.0-windows10.0.26100.0/win-x64/publi
 | CommunityToolkit.Mvvm | MVVM source generator 和基础类型 |
 | CommunityToolkit.WinUI.Controls.SettingsControls | 设置页控件 |
 | Downloader | HTTP 多线程断点续传 |
-| ManagedWimLib | ESD/WIM 读取、提取、导出和压缩 |
 | Microsoft.Data.Sqlite | SQLite 任务缓存 |
 | Microsoft.Extensions.DependencyInjection | DI 容器 |
 | Microsoft.Extensions.Hosting | Host 和 `IHostedService` 生命周期 |
 | Microsoft.Windows.SDK.BuildTools | Windows SDK 构建工具 |
 | Microsoft.WindowsAppSDK | WinUI 3 / Windows App SDK |
+| WindowsImageDownloader.Wim | ManagedWimLib 封装、WIM/ESD 操作 |
+| WindowsImageDownloader.Iso | ESD→ISO 流水线和 oscdimg 后端 |
 
-主项目还包含 `Oscdimg\**\*` copy-to-output 规则：
+主项目还包含 `Oscdimg\oscdimg.exe` copy-to-output 规则：
 
 ```xml
-<None Update="Oscdimg\**\*">
+<None Update="Oscdimg\oscdimg.exe">
 	<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 </None>
 ```
 
-`Oscdimg` 目录至少需要 `oscdimg.exe`、BIOS 启动映像 `etfsboot.com` 和 UEFI 启动映像 `efisys.bin`。这些文件随主应用输出，用于 `OscdimgIsoCreationService` 创建 ISO。
+`Oscdimg` 目录只需要随输出复制 `oscdimg.exe`。ISO 的 EFI 启动映像来自 ESD image 1 展开的 staging 文件树：`efi\microsoft\boot\efisys.bin`；项目不再发布预置 `efisys*.bin` 或 `etfsboot.com`。
 
 ## POC 依赖
 
-`src/POC/POC.csproj` 保留同类验证依赖：
+`src/POC/POC.csproj` 是控制台宿主，直接引用共享转换库：
 
 | 依赖 | 用途 |
 |------|------|
-| ManagedWimLib | WIM 读取、导出、提取实验 |
-| Oscdimg 工具目录 | POC ISO 创建验证；构建时复制到 POC 输出目录 |
+| WindowsImageDownloader.Wim | WIM 读取、导出、提取验证 |
+| WindowsImageDownloader.Iso | ESD→ISO 流水线验证 |
+| Oscdimg 工具目录 | POC ISO 创建验证；构建时只复制 `oscdimg.exe` 到 POC 输出目录 |
 
 ## 安装要求
 
 - Windows 10 19041+ 或 Windows 11。
 - `expand.exe` 为 Windows 内置组件，用于解压产品目录 CAB。
-- ISO 转换依赖主项目输出目录中的 `Oscdimg` 工具文件和 ManagedWimLib native `libwim`。
+- ISO 转换依赖应用输出目录中的 `Oscdimg\oscdimg.exe`、ESD 展开的 EFI 启动映像和由 `WindowsImageDownloader.Wim` 携带的 ManagedWimLib native `libwim`。
 - 主应用发布为 Windows App SDK self-contained，但仍按目标机器环境验证运行时兼容性。
 
 ## 注意事项

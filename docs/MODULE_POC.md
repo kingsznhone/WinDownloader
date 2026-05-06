@@ -2,13 +2,15 @@
 
 ## 概述
 
-`src/POC` 是 WIM/ISO 控制台验证和对照宿主。主 WinUI 应用已经集成 ESD 到 ISO 转换；POC 保留相近模型和服务，用于快速验证转换流水线、进度映射、压缩参数和 oscdimg 行为。
+`src/POC` 是 WIM/ISO 控制台验证和对照宿主。主 WinUI 应用已经集成 ESD 到 ISO 转换；POC 直接引用共享的 `WindowsImageDownloader.Wim` 和 `WindowsImageDownloader.Iso` 项目，用于快速验证同一套转换流水线、进度映射、压缩参数和 oscdimg 行为。
 
 当前 POC 已从“实验脚手架 + CLI pipeline”收敛为“主项目转换服务的控制台对照版”：
 
 | 区域 | 说明 |
 |------|------|
 | `src/WindowsImageDownloader` | WinUI 产品入口，负责 ESD 下载和可选 ISO 转换 |
+| `src/WindowsImageDownloader.Wim` | ManagedWimLib 封装库 |
+| `src/WindowsImageDownloader.Iso` | ESD→ISO 流水线和 oscdimg 后端库 |
 | `src/POC` | 控制台验证入口，便于调试 WIM/ISO 细节和进度映射 |
 
 ## 文件结构
@@ -18,31 +20,16 @@ src/POC/
 ├── POC.csproj
 ├── Program.cs                           # 最小控制台宿主
 ├── README.md
-├── Oscdimg/                             # POC 本地 oscdimg 工具和启动映像
-├── Interfaces/
-│   ├── IEsdToIsoConversionService.cs
-│   ├── IIsoCreationService.cs
-│   └── IWimProcessingService.cs
-├── Models/
-│   ├── EsdToIsoRequest.cs
-│   ├── EsdToIsoResult.cs
-│   ├── EsdToIsoTaskSnapshot.cs       # 包含 state/stage enum
-│   ├── ConversionSession.cs
-│   ├── IsoCreation*.cs
-│   ├── Wim*.cs
-│   └── ...
-└── Services/
-    ├── EsdToIsoConversionService.cs
-    ├── OscdimgIsoCreationService.cs
-    └── WimProcessingService.cs
+└── Oscdimg/                             # POC 本地 oscdimg.exe 工具
 ```
 
 ## 依赖
 
 | 依赖 | 用途 |
 |------|------|
-| ManagedWimLib | WIM/ESD 读取、提取、导出 |
-| Oscdimg 工具目录 | UDF ISO 创建；`POC.csproj` 会复制到输出目录 |
+| `WindowsImageDownloader.Wim` | WIM/ESD 读取、提取、导出 |
+| `WindowsImageDownloader.Iso` | ESD→ISO 流水线和 ISO 创建后端 |
+| Oscdimg 工具目录 | UDF ISO 创建；`POC.csproj` 只复制 `oscdimg.exe` 到输出目录 |
 
 `Program.cs` 使用 `System.CommandLine` 处理少量参数，避免手写解析；CLI 仍只作为服务宿主，不参与转换流水线。
 
@@ -50,7 +37,7 @@ src/POC/
 
 `Program.cs` 只做宿主职责：
 
-1. 解析 `--source`、`--output-root`、`--volume-label`、`--delete-staging`、`--install-compression`、`--iso-only`。
+1. 解析 `--source`、`--output-root`、`--volume-label`、`--delete-staging`、`--install-compression`、`--reuse-install-resources`、`--recompress-install-image`、`--iso-only`。
 2. 创建 `WimProcessingService`、`OscdimgIsoCreationService` 和 `EsdToIsoConversionService`。
 3. 订阅 `EsdToIsoConversionService.ProgressChanged`。
 4. 调用 `ConvertAsync()`。
@@ -63,10 +50,11 @@ src/POC/
 ```powershell
 dotnet run --project .\src\POC\POC.csproj -- --help
 dotnet run --project .\src\POC\POC.csproj --
-dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --output-root D:\IsoPoc
-dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --delete-staging
-dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --install-compression LZX
-dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --output-root D:\IsoPoc --iso-only
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\source.esd --output-root D:\IsoPoc
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\source.esd --delete-staging
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\source.esd --recompress-install-image
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\source.esd --install-compression LZX
+dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\source.esd --output-root D:\IsoPoc --iso-only
 ```
 
 参数说明：
@@ -77,8 +65,12 @@ dotnet run --project .\src\POC\POC.csproj -- --source C:\Path\To\install.esd --o
 | `--output-root` | 源 ESD 同级 `poc-iso-staging` | POC staging root；完整转换会在其下创建 `staging` 子目录 |
 | `--volume-label` | `ESD_ISO` | ISO 卷标 |
 | `--delete-staging` | 关闭 | 成功后删除 staging 中间文件 |
-| `--install-compression` | `LZMS` | `install.esd` 压缩算法，可用于验证 `LZX` / `LZMS` |
+| `--install-compression` | `LZMS` | `install.wim` 压缩算法；`LZX` 会强制重压 |
+| `--reuse-install-resources` | 开启 | 构建 `install.wim` 时复用官方 solid LZMS ESD 资源 |
+| `--recompress-install-image` | 关闭 | 强制重压 `install.wim`，用于速度/体积对比或非默认压缩验证 |
 | `--iso-only` | 关闭 | 跳过 WIM/ESD 阶段，只对现有 staging 目录运行 oscdimg |
+
+默认路径已经是复用官方 solid LZMS 资源写入 `install.wim`。如需对比旧式重压缩路径，使用 `--recompress-install-image`，再对比控制台中的 `Duration`、`install.wim size` 和最终 ISO 行为。快速路径要求 `--install-compression LZMS`；如果指定 `LZX`，POC 会强制重压。
 
 ## 服务边界
 
@@ -93,7 +85,7 @@ Program
       -> WimProcessingService.GetImagesAsync
       -> WimProcessingService.ExtractImageAsync
       -> WimProcessingService.ExportImagesAsync boot.wim
-      -> WimProcessingService.ExportImagesAsync install.esd
+      -> WimProcessingService.ExportImagesAsync install.wim
       -> OscdimgIsoCreationService.CreateIsoAsync
 ```
 
@@ -141,19 +133,19 @@ background worker -> snapshot -> ViewModel coalescing -> UI thread
 | image 1 | `staging\` | 展开成 ISO 文件树骨架 |
 | image 2 | `staging\sources\boot.wim` index 1 | Windows PE |
 | image 3 | `staging\sources\boot.wim` index 2 | Windows Setup，标记 bootable |
-| image 4..n | `staging\sources\install.esd` | 安装系统版本 |
+| image 4..n | `staging\sources\install.wim` | 安装系统版本 |
 
 主项目默认压缩策略与 POC 默认值一致：
 
 - `boot.wim` 使用 `LZX`。
-- `install.esd` 默认使用 `LZMS` 和 solid 写入。
-- POC 可通过 `--install-compression` 验证 `LZX` / `LZMS`；主应用暂不暴露格式或压缩选择。
+- `install.wim` 默认使用 `LZMS`、solid，并复用官方 ESD 中已有资源，避免强制重压。
+- POC 可通过 `--recompress-install-image` 或 `--install-compression LZX` 验证重压路径；主应用暂不暴露格式或压缩选择。
 
 ## ISO 创建后端
 
 | 后端 | 定位 | 注意事项 |
 |------|------|----------|
-| `oscdimg` | 兼容性目标 | 优先调用输出目录中的 `Oscdimg\oscdimg.exe`，使用 UDF 2.00 和 BIOS + UEFI boot data |
+| `oscdimg` | 兼容性目标 | 调用输出目录中的 `Oscdimg\oscdimg.exe`，使用 ISO+UDF 1.02 和 staging 中的 `efi\microsoft\boot\efisys.bin` 生成单 EFI 启动项 |
 
 与旧实验期行为不同：未找到 oscdimg、缺启动映像或 oscdimg 退出失败时，`EsdToIsoConversionService` 会把转换标记为 `Failed`，而不是把 ISO 后端标记为 skipped。
 
@@ -163,7 +155,7 @@ background worker -> snapshot -> ViewModel coalescing -> UI thread
 |-----------|------|
 | `staging\` | ISO 根目录，中间文件默认保留；传 `--delete-staging` 后成功时删除 |
 | `staging\sources\boot.wim` | 由 image 2+3 生成 |
-| `staging\sources\install.esd` | 由 image 4..n 生成 |
+| `staging\sources\install.wim` | 由 image 4..n 生成 |
 | `{SourceFileName}.iso` | oscdimg 后端产物，生成在源 ESD 同级目录 |
 | `console-*.log` | Program 层控制台输出镜像，生成在 `--output-root` |
 
@@ -171,7 +163,7 @@ POC 第一版不再默认写 `events.ndjson`、`manifest.json` 或 `summary.txt`
 
 ## WimProcessingService
 
-当前 POC 中保留 ManagedWimLib 包装能力：
+`WindowsImageDownloader.Wim` 提供 ManagedWimLib 包装能力：
 
 ```csharp
 Task<IReadOnlyList<WimImageInfo>> GetImagesAsync(string imagePath, CancellationToken ct = default);
@@ -186,7 +178,7 @@ Task ExportImagesAsync(WimExportRequest request,
 - 使用 `SemaphoreSlim(1, 1)` 串行化 WIM 操作。
 - 构造时执行 `ManagedWim.GlobalInit()`，优先显式加载 NuGet 输出目录下的 packaged native `libwim`，释放时执行 `TryGlobalCleanup()`。
 - 通过 ManagedWimLib callback 同步回调 `WimOperationProgress`。
-- `ExportImagesAsync()` 用于把多个 ESD image 写入同一个目标 WIM/ESD，例如 `boot.wim` 和 `install.esd`。
+- `ExportImagesAsync()` 用于把多个 ESD image 写入同一个目标 WIM，例如 `boot.wim` 和 `install.wim`。
 - `Wim.Write()` 写出目标 WIM/ESD 时使用 `ManagedWim.AllImages`；`0` 是 `NoImage`，会触发 `InvalidImage`。
 
 ## 与主项目的差异
@@ -200,7 +192,7 @@ Task ExportImagesAsync(WimExportRequest request,
 
 ## 后续验证方向
 
-- 验证 `boot.wim` 和 `install.esd` 的映像索引、boot 标记、压缩和文件大小。
-- 验证 oscdimg 产物的挂载结果和 UEFI/BIOS 虚拟机启动结果。
+- 验证 `boot.wim` 和 `install.wim` 的映像索引、boot 标记、压缩和文件大小。
+- 验证 oscdimg 产物的挂载结果和 UEFI 虚拟机启动结果。
 - 验证大型镜像处理的 snapshot 频率、取消、临时文件保留和错误提示。
 - 继续验证 POC 和主项目在相同 ESD 上的进度映射一致性。

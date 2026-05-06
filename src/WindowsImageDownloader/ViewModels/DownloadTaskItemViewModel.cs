@@ -3,8 +3,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using WindowsImageDownloader.Interfaces;
+using WindowsImageDownloader.Iso;
 using WindowsImageDownloader.Models;
 using WindowsImageDownloader.Services;
+using WindowsImageDownloader.Wim;
 
 namespace WindowsImageDownloader.ViewModels;
 
@@ -54,17 +56,6 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
 
     public DownloadTask Task { get; }
 
-    public string FileName => Task.FileName;
-    public string LanguageText => Task.LanguageText;
-    public string EditionGroupText => Task.EditionGroupText;
-    public TagType EditionGroupTagType => Task.EditionGroupTagType;
-    public string RetailText => Task.RetailText;
-    public TagType RetailTagType => Task.RetailTagType;
-    public string Architecture => Task.Architecture;
-    public TagType ArchTagType => Task.ArchTagType;
-    public string SizeText => Task.SizeText;
-    public string Sha256 => Task.Sha256;
-    public IReadOnlyList<string> Editions => Task.Editions;
     public double Progress => double.IsFinite(_progress) ? _progress : 0;
     public string StatusText => _statusText;
     public string ErrorMessage => _errorMessage;
@@ -87,28 +78,28 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     // ── Commands ──────────────────────────────────────────────────────────────
 
     [RelayCommand(CanExecute = nameof(CanPause))]
-    private async System.Threading.Tasks.Task PauseAsync()
+    private async Task PauseAsync()
     {
         var result = await _orchestrator.PauseAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanResume))]
-    private async System.Threading.Tasks.Task ResumeAsync()
+    private async Task ResumeAsync()
     {
         var result = await _orchestrator.ResumeAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanCancel))]
-    private async System.Threading.Tasks.Task CancelAsync()
+    private async Task CancelAsync()
     {
         var result = await _orchestrator.CancelAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanDelete))]
-    private async System.Threading.Tasks.Task DeleteAsync()
+    private async Task DeleteAsync()
     {
         var result = await _orchestrator.DeleteAsync(Task.Sha256);
         ApplyOperationResult(result);
@@ -122,7 +113,7 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     }
 
     [RelayCommand(CanExecute = nameof(CanConvertToIso))]
-    private async System.Threading.Tasks.Task ConvertToIsoAsync()
+    private async Task ConvertToIsoAsync()
     {
         var isoPath = _pathService.ResolveIsoPath(Task);
         if (File.Exists(isoPath))
@@ -400,7 +391,7 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
                 EsdToIsoStage.InspectingSource => "读取 ESD 信息",
                 EsdToIsoStage.ApplyingSetupMedia => "展开安装介质",
                 EsdToIsoStage.BuildingBootWim => "生成 boot.wim",
-                EsdToIsoStage.BuildingInstallImage => "生成 install.esd",
+                EsdToIsoStage.BuildingInstallImage => "生成 install.wim",
                 EsdToIsoStage.CreatingIso => "创建 ISO",
                 _ => "转换 ISO"
             }
@@ -432,7 +423,7 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
                 EsdToIsoStage.InspectingSource => "扫描源 ESD 中的映像索引",
                 EsdToIsoStage.ApplyingSetupMedia => "展开 image 1 到 ISO 文件树",
                 EsdToIsoStage.BuildingBootWim => "导出启动映像到 boot.wim",
-                EsdToIsoStage.BuildingInstallImage => "压缩安装映像到 install.esd",
+                EsdToIsoStage.BuildingInstallImage => "复用 LZMS 安装映像到 install.wim",
                 EsdToIsoStage.CreatingIso => "调用 oscdimg 打包文件树",
                 _ => string.Empty
             }
