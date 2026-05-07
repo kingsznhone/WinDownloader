@@ -30,7 +30,9 @@
 
 ## 🖼️ 截图
 
-*(待添加)*
+<img src="readme/screenshot-1.png" width="720" alt="截图 1"/>
+
+<img src="readme/screenshot-2.png" width="720" alt="截图 2"/>
 
 ---
 

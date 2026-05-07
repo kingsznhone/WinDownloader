@@ -30,7 +30,11 @@ A Windows installation image downloader built with **WinUI 3** and **.NET 10**. 
 
 ## 🖼️ Screenshots
 
-*(Coming soon)*
+<img src="readme/screenshot-1.png" width="720" alt="Screenshot 1"/>
+
+<img src="readme/screenshot-2.png" width="720" alt="Screenshot 2"/>
+
+<img src="readme/screenshot-3.png" width="720" alt="Screenshot 3"/>
 
 ---
 
