@@ -4,9 +4,11 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![WinUI 3](https://img.shields.io/badge/WinUI-3-0078D4)](https://docs.microsoft.com/zh-cn/windows/apps/winui/winui3/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D6)](https://www.microsoft.com/windows)
+
 <p align="center">
   <img src="./readme/favicon.png" width="128" height="128" alt="WindowsImageDownloader">
 </p>
+
 > **English version: [README.md](README.md)**
 
 一个基于 **WinUI 3** 和 **.NET 10** 的 Windows 安装映像下载工具。从 **Microsoft Update Catalog** 获取产品目录、筛选 ESD 文件、多线程断点续传下载、SHA-256 校验、SQLite 任务持久化，并支持将下载完成的 ESD 文件转换为可启动的 ISO 映像。
