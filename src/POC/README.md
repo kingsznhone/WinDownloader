@@ -2,12 +2,12 @@
 
 This project is the console validation and comparison host for the ESD-to-ISO pipeline. The WinUI app now has the product-facing ISO conversion entry; this POC remains useful for debugging progress mapping, compression choices, staging cleanup, and oscdimg output without launching the UI.
 
-The POC is shaped like the WinUI conversion service stack:
+The POC is shaped like the WinUI conversion service stack, but uses a CLI-specific pipeline service:
 
-- `Program.cs` is a minimal console host. It parses a small option set, creates services, subscribes to task snapshots, and calls `EsdToIsoConversionService.ConvertAsync()`.
-- `EsdToIsoConversionService`, `WimProcessingService`, and `OscdimgIsoCreationService` come from the shared `WindowsImageDownloader.Iso` and `WindowsImageDownloader.Wim` projects.
-- The conversion service owns the full ESD-to-ISO workflow and publishes immutable `EsdToIsoTaskSnapshot` updates through `ProgressChanged`.
-- `Program.cs` subscribes to `ProgressChanged` directly and formats snapshots for console output.
+- `Program.cs` is a minimal console host. It parses a small option set, creates services, and calls `CliConversionService.ConvertAsync()`.
+- `CliConversionService` lives in the POC; `WimProcessingService` and `OscdimgIsoCreationService` come from the shared `WinDownloader.Wim` and `WinDownloader.Iso` projects.
+- The conversion service owns the full ESD-to-ISO workflow and publishes `CliConversionProgress` updates through `IProgress<T>`.
+- `Program.cs` formats progress callbacks for console output.
 - Console output is mirrored to a `console-*.log` file by `Program.cs`; the conversion service does not write manifest or summary files.
 - WIM and ISO details stay behind the shared services; POC only hosts and logs them.
 

@@ -4,7 +4,7 @@
 
 主项目使用非 MSIX 解包部署模式，依赖 Windows App SDK self-contained 发布。
 
-关键配置位于 `src/WindowsImageDownloader/WindowsImageDownloader.csproj`：
+关键配置位于 `src/WinDownloader/WinDownloader.csproj`：
 
 ```xml
 <WindowsPackageType>None</WindowsPackageType>
@@ -20,23 +20,23 @@
 ## 构建
 
 ```powershell
-dotnet build .\src\WindowsImageDownloader\WindowsImageDownloader.csproj -nologo -p:Platform=x64 -v minimal
+dotnet build .\src\WinDownloader\WinDownloader.csproj -nologo -p:Platform=x64 -v minimal
 ```
 
 主项目只声明 `x64`/`win-x64`，Windows App SDK 构建需要显式平台参数；省略 `-p:Platform=x64` 会触发不支持的架构错误。
 
-WinUI/MRT Core 字符串资源位于 `Strings/{language}/Resources.resw`。当前非 MSIX 构建会把这些 `.resw` 编入应用 PRI，并在输出目录生成 `WindowsImageDownloader.pri`；发布阶段通过 `CopyWinUIResourcesToPublishDirectory` target 自动把 `WindowsImageDownloader.pri` 和 `.xbf` 复制到 publish 目录，不需要额外发布独立的 `resources.pri`。详细规则见 [MODULE_LOCALIZATION.md](MODULE_LOCALIZATION.md)。
+WinUI/MRT Core 字符串资源位于 `Strings/{language}/Resources.resw`。当前非 MSIX 构建会把这些 `.resw` 编入应用 PRI，并在输出目录生成 `WinDownloader.pri`；发布阶段通过 `CopyWinUIResourcesToPublishDirectory` target 自动把 `WinDownloader.pri` 和 `.xbf` 复制到 publish 目录，不需要额外发布独立的 `resources.pri`。详细规则见 [MODULE_LOCALIZATION.md](MODULE_LOCALIZATION.md)。
 
 ## 发布
 
 ```powershell
-dotnet publish src/WindowsImageDownloader/WindowsImageDownloader.csproj -c Release -r win-x64 --self-contained true
+dotnet publish src/WinDownloader/WinDownloader.csproj -c Release -r win-x64 --self-contained true
 ```
 
 输出目录：
 
 ```text
-src/WindowsImageDownloader/bin/Release/net10.0-windows10.0.26100.0/win-x64/publish/
+src/WinDownloader/bin/Release/net10.0-windows10.0.26100.0/win-x64/publish/
 ```
 
 ## 主项目依赖
@@ -51,8 +51,8 @@ src/WindowsImageDownloader/bin/Release/net10.0-windows10.0.26100.0/win-x64/publi
 | Microsoft.Extensions.Hosting | Host 和 `IHostedService` 生命周期 |
 | Microsoft.Windows.SDK.BuildTools | Windows SDK 构建工具 |
 | Microsoft.WindowsAppSDK | WinUI 3 / Windows App SDK |
-| WindowsImageDownloader.Wim | ManagedWimLib 封装、WIM/ESD 操作 |
-| WindowsImageDownloader.Iso | ESD→ISO 流水线和 oscdimg 后端 |
+| WinDownloader.Wim | ManagedWimLib 封装、WIM/ESD 操作 |
+| WinDownloader.Iso | ISO 打包库和 oscdimg 后端 |
 
 主项目还包含 `Oscdimg\oscdimg.exe` copy-to-output 规则：
 
@@ -70,15 +70,15 @@ src/WindowsImageDownloader/bin/Release/net10.0-windows10.0.26100.0/win-x64/publi
 
 | 依赖 | 用途 |
 |------|------|
-| WindowsImageDownloader.Wim | WIM 读取、导出、提取验证 |
-| WindowsImageDownloader.Iso | ESD→ISO 流水线验证 |
+| WinDownloader.Wim | WIM 读取、导出、提取验证 |
+| WinDownloader.Iso | ISO 创建验证 |
 | Oscdimg 工具目录 | POC ISO 创建验证；构建时只复制 `oscdimg.exe` 到 POC 输出目录 |
 
 ## 安装要求
 
 - Windows 10 19041+ 或 Windows 11。
 - `expand.exe` 为 Windows 内置组件，用于解压产品目录 CAB。
-- ISO 转换依赖应用输出目录中的 `Oscdimg\oscdimg.exe`、ESD 展开的 EFI 启动映像和由 `WindowsImageDownloader.Wim` 携带的 ManagedWimLib native `libwim`。
+- ISO 转换依赖应用输出目录中的 oscdimg 工具、ESD 展开的 EFI 启动映像和由 `WinDownloader.Wim` 携带的 ManagedWimLib native `libwim`。
 - 主应用发布为 Windows App SDK self-contained，但仍按目标机器环境验证运行时兼容性。
 
 ## 注意事项

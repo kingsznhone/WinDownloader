@@ -89,7 +89,7 @@ public enum TaskState
 }
 ```
 
-下载任务状态仍不包含 ISO 转换态。转换生命周期由 `EsdToIsoTaskSnapshot.State` 表示，并通过 `DownloadTaskSnapshot.IsoConversionSnapshot` 合并到 UI。
+下载任务状态仍不包含 ISO 转换态。转换生命周期由 `EsdToIsoTaskSnapshot.State` 表示，并通过 `IsoConversionTaskSnapshot` 独立通知 UI。
 
 ## ISO 转换模型
 

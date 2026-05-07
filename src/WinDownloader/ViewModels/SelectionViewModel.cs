@@ -12,7 +12,7 @@ namespace WinDownloader.ViewModels;
 public sealed partial class SelectionViewModel : ObservableObject
 {
     private readonly IUpdateCatalogService _catalogService;
-    private readonly ITaskOrchestratorService _orchestrator;
+    private readonly IDownloadTaskOrchestratorService _orchestrator;
     private readonly List<RawFile> _allFiles = new();
     private bool _isUpdatingFilters;
     private bool _hasLoadAttempted;
@@ -25,7 +25,7 @@ public sealed partial class SelectionViewModel : ObservableObject
     private CatalogOption? _selectedLanguage;
     private CatalogOption? _selectedArchitecture;
 
-    public SelectionViewModel(IUpdateCatalogService catalogService, ITaskOrchestratorService orchestrator)
+    public SelectionViewModel(IUpdateCatalogService catalogService, IDownloadTaskOrchestratorService orchestrator)
     {
         _catalogService = catalogService;
         _orchestrator = orchestrator;

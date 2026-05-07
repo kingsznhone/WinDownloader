@@ -11,7 +11,7 @@ namespace WinDownloader.Interfaces;
 /// <c>StopAsync</c> signals active downloads to shut down.
 /// </para>
 /// </summary>
-public interface ITaskOrchestratorService : IHostedService
+public interface IDownloadTaskOrchestratorService : IHostedService
 {
     // ── Queue management ──────────────────────────────────────────────────────
 
@@ -45,11 +45,6 @@ public interface ITaskOrchestratorService : IHostedService
     /// </summary>
     Task<TaskOperationResult> CancelAsync(string sha256, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Queues ISO conversion for a completed ESD download task.
-    /// </summary>
-    Task<TaskOperationResult> ConvertToIsoAsync(string sha256, CancellationToken cancellationToken = default);
-
     // ── Removal ────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -67,7 +62,7 @@ public interface ITaskOrchestratorService : IHostedService
     IReadOnlyList<DownloadTask> Tasks { get; }
 
     /// <summary>
-    /// Number of currently active download or ISO conversion workers.
+    /// Number of currently active download workers.
     /// </summary>
     int ActiveTaskCount { get; }
 

@@ -47,7 +47,7 @@ MainWindow
 | `FilteredGroups` | 筛选后的 `RawFileItemViewModel` 集合 |
 | `EnsureCatalogLoadedAsync()` | 页面首次进入时加载目录 |
 | `ReloadCommand` | 强制刷新目录 |
-| `EnqueueDownloadCommand` | 调用 `TaskOrchestratorService.EnqueueAsync` |
+| `EnqueueDownloadCommand` | 调用 `DownloadTaskOrchestratorService.EnqueueAsync` |
 
 入队时调用：
 
@@ -63,7 +63,8 @@ DownloadTask.FromRawFileGroup(group)
 
 依赖：
 
-- `ITaskOrchestratorService`
+- `IDownloadTaskOrchestratorService`
+- `IEsdToIsoOrchestratorService`
 - `IDownloadTaskPathService`
 
 它订阅：
@@ -72,14 +73,15 @@ DownloadTask.FromRawFileGroup(group)
 |------|------|
 | `TaskAdded` | UI 线程插入 `DownloadTaskItemViewModel` |
 | `TaskRemoved` | UI 线程移除并 dispose 任务 VM |
-| `TaskChanged` | 将下载和 ISO 转换快照转发给对应 task item |
-| `ActiveTaskCountChanged` | 更新导航徽标计数 |
+| `TaskChanged` | 将下载快照转发给对应 task item |
+| `ConversionChanged` | 将 ISO 转换快照转发给对应 task item |
+| `ActiveTaskCountChanged` | 聚合下载和 ISO active 计数，更新导航徽标 |
 
-`PendingTaskCount` 当前显示 active worker 数：正在下载、校验或转换 ISO 的 worker 会计入；仅排队等待下载槽或转换槽的任务不会计入。
+`PendingTaskCount` 当前显示两个编排服务的 active worker 总数：正在下载、校验或转换 ISO 的 worker 会计入；仅排队等待下载槽或转换槽的任务不会计入。
 
 ## DownloadTaskItemViewModel
 
-职责：把 `DownloadTaskSnapshot` 转成 XAML 绑定属性，并暴露任务操作命令。下载快照和 ISO 转换快照都会先合并到 ViewModel，再通过 `DispatcherQueue.TryEnqueue` 应用到 UI 线程。
+职责：把 `DownloadTaskSnapshot` 和 `IsoConversionTaskSnapshot` 转成 XAML 绑定属性，并暴露任务操作命令。下载快照和 ISO 转换快照分别合并到 ViewModel，再通过 `DispatcherQueue.TryEnqueue` 应用到 UI 线程。
 
 | 状态属性 | 说明 |
 |----------|------|

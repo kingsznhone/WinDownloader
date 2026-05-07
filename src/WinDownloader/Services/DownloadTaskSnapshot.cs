@@ -1,5 +1,4 @@
 using WinDownloader.Models;
-using WinDownloader.Iso;
 
 namespace WinDownloader.Services;
 
@@ -9,17 +8,13 @@ public sealed record DownloadTaskSnapshot(
     double Progress,
     long SpeedBytesPerSecond,
     string StatusText,
-    string? ErrorMessage,
-    EsdToIsoTaskSnapshot? IsoConversionSnapshot = null)
+    string? ErrorMessage)
 {
-    public static DownloadTaskSnapshot FromTask(
-        DownloadTask task,
-        EsdToIsoTaskSnapshot? isoConversionSnapshot = null) => new(
+    public static DownloadTaskSnapshot FromTask(DownloadTask task) => new(
         task.Sha256,
         task.State,
         task.Progress,
         task.SpeedBytesPerSecond,
         task.StatusText,
-        task.ErrorMessage,
-        isoConversionSnapshot);
+        task.ErrorMessage);
 }

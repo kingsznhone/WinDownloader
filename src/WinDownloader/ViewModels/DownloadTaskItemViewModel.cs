@@ -17,13 +17,17 @@ namespace WinDownloader.ViewModels;
 /// </summary>
 public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDisposable
 {
-    private readonly ITaskOrchestratorService _orchestrator;
+    private readonly IDownloadTaskOrchestratorService _downloadOrchestrator;
+    private readonly IEsdToIsoOrchestratorService _isoOrchestrator;
     private readonly IDownloadTaskPathService _pathService;
     private readonly DispatcherQueue _dispatcherQueue;
-    private readonly object _snapshotLock = new();
+    private readonly object _downloadSnapshotLock = new();
+    private readonly object _isoSnapshotLock = new();
     private string _operationMessage = string.Empty;
-    private DownloadTaskSnapshot? _pendingSnapshot;
-    private bool _snapshotRefreshQueued;
+    private DownloadTaskSnapshot? _pendingDownloadSnapshot;
+    private EsdToIsoTaskSnapshot? _pendingIsoSnapshot;
+    private bool _downloadSnapshotRefreshQueued;
+    private bool _isoSnapshotRefreshQueued;
     private TaskState _state;
     private double _progress;
     private long _speedBytesPerSecond;
@@ -38,21 +42,26 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
 
     public DownloadTaskItemViewModel(
         DownloadTask task,
-        ITaskOrchestratorService orchestrator,
+        IDownloadTaskOrchestratorService downloadOrchestrator,
+        IEsdToIsoOrchestratorService isoOrchestrator,
         IDownloadTaskPathService pathService)
     {
         ArgumentNullException.ThrowIfNull(task);
-        ArgumentNullException.ThrowIfNull(orchestrator);
+        ArgumentNullException.ThrowIfNull(downloadOrchestrator);
+        ArgumentNullException.ThrowIfNull(isoOrchestrator);
         ArgumentNullException.ThrowIfNull(pathService);
 
         Task = task;
-        _orchestrator = orchestrator;
+        _downloadOrchestrator = downloadOrchestrator;
+        _isoOrchestrator = isoOrchestrator;
         _pathService = pathService;
         // Must be captured on the UI thread (constructor is always called from UI thread via DI).
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         ApplySnapshot(DownloadTaskSnapshot.FromTask(task), notify: false);
-        _orchestrator.TaskChanged += OnTaskChanged;
+        ApplyIsoSnapshot(_isoOrchestrator.GetSnapshot(task.Sha256), notify: false);
+        _downloadOrchestrator.TaskChanged += OnTaskChanged;
+        _isoOrchestrator.ConversionChanged += OnIsoConversionChanged;
     }
 
     public DownloadTask Task { get; }
@@ -81,28 +90,28 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     [RelayCommand(CanExecute = nameof(CanPause))]
     private async Task PauseAsync()
     {
-        var result = await _orchestrator.PauseAsync(Task.Sha256);
+        var result = await _downloadOrchestrator.PauseAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanResume))]
     private async Task ResumeAsync()
     {
-        var result = await _orchestrator.ResumeAsync(Task.Sha256);
+        var result = await _downloadOrchestrator.ResumeAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanCancel))]
     private async Task CancelAsync()
     {
-        var result = await _orchestrator.CancelAsync(Task.Sha256);
+        var result = await _downloadOrchestrator.CancelAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private async Task DeleteAsync()
     {
-        var result = await _orchestrator.DeleteAsync(Task.Sha256);
+        var result = await _downloadOrchestrator.DeleteAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
@@ -123,7 +132,7 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
             return;
         }
 
-        var result = await _orchestrator.ConvertToIsoAsync(Task.Sha256);
+        var result = await _isoOrchestrator.ConvertToIsoAsync(Task);
         ApplyOperationResult(result);
     }
 
@@ -154,7 +163,7 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     public bool IsDownloadCompleted => _state == TaskState.Completed;
 
     public bool ShowDownloadProgress => _state is TaskState.Queued or TaskState.Downloading or TaskState.Verifying;
-    public bool ShowIsoProgress => _isoSnapshot is not null;
+    public bool ShowIsoProgress => _isoSnapshot?.State is EsdToIsoTaskState.NotStarted or EsdToIsoTaskState.Running or EsdToIsoTaskState.Failed or EsdToIsoTaskState.Canceled;
     public bool ShowActionBar => IsDownloadCompleted;
     public bool HasStatusText => !string.IsNullOrEmpty(_statusText);
     public bool HasError => IsFailed && !string.IsNullOrEmpty(_errorMessage);
@@ -186,21 +195,45 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
         if (!string.Equals(snapshot.Sha256, Task.Sha256, StringComparison.OrdinalIgnoreCase))
             return;
 
-        lock (_snapshotLock)
+        lock (_downloadSnapshotLock)
         {
-            _pendingSnapshot = snapshot;
+            _pendingDownloadSnapshot = snapshot;
 
-            if (_snapshotRefreshQueued)
+            if (_downloadSnapshotRefreshQueued)
                 return;
 
-            _snapshotRefreshQueued = true;
+            _downloadSnapshotRefreshQueued = true;
         }
 
         if (!_dispatcherQueue.TryEnqueue(ApplyPendingSnapshot))
         {
-            lock (_snapshotLock)
+            lock (_downloadSnapshotLock)
             {
-                _snapshotRefreshQueued = false;
+                _downloadSnapshotRefreshQueued = false;
+            }
+        }
+    }
+
+    private void OnIsoConversionChanged(object? sender, IsoConversionTaskSnapshot snapshot)
+    {
+        if (!string.Equals(snapshot.Sha256, Task.Sha256, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        lock (_isoSnapshotLock)
+        {
+            _pendingIsoSnapshot = snapshot.Snapshot;
+
+            if (_isoSnapshotRefreshQueued)
+                return;
+
+            _isoSnapshotRefreshQueued = true;
+        }
+
+        if (!_dispatcherQueue.TryEnqueue(ApplyPendingIsoSnapshot))
+        {
+            lock (_isoSnapshotLock)
+            {
+                _isoSnapshotRefreshQueued = false;
             }
         }
     }
@@ -209,15 +242,29 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     {
         DownloadTaskSnapshot? snapshot;
 
-        lock (_snapshotLock)
+        lock (_downloadSnapshotLock)
         {
-            snapshot = _pendingSnapshot;
-            _pendingSnapshot = null;
-            _snapshotRefreshQueued = false;
+            snapshot = _pendingDownloadSnapshot;
+            _pendingDownloadSnapshot = null;
+            _downloadSnapshotRefreshQueued = false;
         }
 
         if (snapshot is not null)
             ApplySnapshot(snapshot, notify: true);
+    }
+
+    private void ApplyPendingIsoSnapshot()
+    {
+        EsdToIsoTaskSnapshot? snapshot;
+
+        lock (_isoSnapshotLock)
+        {
+            snapshot = _pendingIsoSnapshot;
+            _pendingIsoSnapshot = null;
+            _isoSnapshotRefreshQueued = false;
+        }
+
+        ApplyIsoSnapshot(snapshot, notify: true);
     }
 
     private void ApplySnapshot(DownloadTaskSnapshot snapshot, bool notify)
@@ -234,7 +281,6 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
         _speedBytesPerSecond = snapshot.SpeedBytesPerSecond;
         _statusText = snapshot.StatusText;
         _errorMessage = errorMessage;
-        ApplyIsoSnapshot(snapshot.IsoConversionSnapshot, notify);
 
         if (!notify)
             return;
@@ -456,5 +502,9 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
             : result.Message ?? StringRes.Get("DownloadTask_OperationFailed");
     }
 
-    public void Dispose() => _orchestrator.TaskChanged -= OnTaskChanged;
+    public void Dispose()
+    {
+        _downloadOrchestrator.TaskChanged -= OnTaskChanged;
+        _isoOrchestrator.ConversionChanged -= OnIsoConversionChanged;
+    }
 }

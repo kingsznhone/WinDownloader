@@ -4,20 +4,20 @@
 
 主 WinUI 应用使用 Windows App SDK / MRT Core 的 `.resw` 字符串资源本地化静态 XAML 文本。当前只维护 `en-US` 和 `zh-CN` 两套 UI 资源，语言切换后需要重启应用生效。
 
-本项目是非 MSIX 解包部署，但主项目仍由 WinUI / Windows App SDK MSBuild 管线生成应用 PRI。正常 `dotnet build` 会把 `Strings/{language}/Resources.resw` 编入输出目录中的 `WindowsImageDownloader.pri`，不需要手动运行 `MakePri.exe`，也不需要额外生成独立的 `resources.pri`。`dotnet publish` 阶段通过项目内 MSBuild target 自动把已生成的 PRI 和 XBF 文件复制到发布目录。
+本项目是非 MSIX 解包部署，但主项目仍由 WinUI / Windows App SDK MSBuild 管线生成应用 PRI。正常 `dotnet build` 会把 `Strings/{language}/Resources.resw` 编入输出目录中的 `WinDownloader.pri`，不需要手动运行 `MakePri.exe`，也不需要额外生成独立的 `resources.pri`。`dotnet publish` 阶段通过项目内 MSBuild target 自动把已生成的 PRI 和 XBF 文件复制到发布目录。
 
 ## 文件清单
 
 | 文件 | 说明 |
 |------|------|
-| `src/WindowsImageDownloader/Strings/en-US/Resources.resw` | 英文字符串资源 |
-| `src/WindowsImageDownloader/Strings/zh-CN/Resources.resw` | 简体中文字符串资源 |
-| `src/WindowsImageDownloader/App.xaml.cs` | 启动时应用语言覆盖，必须早于 `InitializeComponent()` |
-| `src/WindowsImageDownloader/Services/AppSettingsService.cs` | 保存和解析 `AppLanguage` |
-| `src/WindowsImageDownloader/ViewModels/SettingsViewModel.cs` | 语言选择和重启应用命令 |
-| `src/WindowsImageDownloader/Views/Pages/SettingsPage.xaml` | 语言设置、重启卡片和设置页静态文本 |
-| `src/WindowsImageDownloader/**/*.xaml` | 使用 `x:Uid` 绑定静态 UI 文本 |
-| `src/WindowsImageDownloader/WindowsImageDownloader.csproj` | publish 后复制 `WindowsImageDownloader.pri` 和 `.xbf` |
+| `src/WinDownloader/Strings/en-US/Resources.resw` | 英文字符串资源 |
+| `src/WinDownloader/Strings/zh-CN/Resources.resw` | 简体中文字符串资源 |
+| `src/WinDownloader/App.xaml.cs` | 启动时应用语言覆盖，必须早于 `InitializeComponent()` |
+| `src/WinDownloader/Services/AppSettingsService.cs` | 保存和解析 `AppLanguage` |
+| `src/WinDownloader/ViewModels/SettingsViewModel.cs` | 语言选择和重启应用命令 |
+| `src/WinDownloader/Views/Pages/SettingsPage.xaml` | 语言设置、重启卡片和设置页静态文本 |
+| `src/WinDownloader/**/*.xaml` | 使用 `x:Uid` 绑定静态 UI 文本 |
+| `src/WinDownloader/WinDownloader.csproj` | publish 后复制 `WinDownloader.pri` 和 `.xbf` |
 
 ## 当前范围
 
@@ -94,40 +94,40 @@ XAML 使用 `x:Uid` 引用资源，资源键使用 `{Uid}.{Property}` 形式：
 因此 MSBuild 会在构建时自动处理 `.resw`，输出应用 PRI：
 
 ```text
-src/WindowsImageDownloader/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/WindowsImageDownloader.pri
+src/WinDownloader/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/WinDownloader.pri
 ```
 
-发布目录不会天然包含所有 WinUI 生成资源，因此 `WindowsImageDownloader.csproj` 包含 `CopyWinUIResourcesToPublishDirectory` target，在 `Publish` 后把已生成的 `WindowsImageDownloader.pri`、`App.xbf`、`MainWindow.xbf` 和 `Views/**/*.xbf` 复制到 `$(PublishDir)`。
+发布目录不会天然包含所有 WinUI 生成资源，因此 `WinDownloader.csproj` 包含 `CopyWinUIResourcesToPublishDirectory` target，在 `Publish` 后把已生成的 `WinDownloader.pri`、`App.xbf`、`MainWindow.xbf` 和 `Views/**/*.xbf` 复制到 `$(PublishDir)`。
 
-不要为当前项目额外添加脚本生成 `resources.pri`，否则容易和现有 `WindowsImageDownloader.pri` 产生重复或路径不一致问题。只有在将来脱离 WinUI MSBuild 管线、改用自定义构建系统，才需要重新设计 MakePri 生成流程。
+不要为当前项目额外添加脚本生成 `resources.pri`，否则容易和现有 `WinDownloader.pri` 产生重复或路径不一致问题。只有在将来脱离 WinUI MSBuild 管线、改用自定义构建系统，才需要重新设计 MakePri 生成流程。
 
 ## 验证
 
 构建：
 
 ```powershell
-dotnet build .\src\WindowsImageDownloader\WindowsImageDownloader.csproj -nologo -p:Platform=x64 -v minimal
+dotnet build .\src\WinDownloader\WinDownloader.csproj -nologo -p:Platform=x64 -v minimal
 ```
 
 确认输出存在应用 PRI：
 
 ```powershell
-Get-ChildItem .\src\WindowsImageDownloader\bin -Recurse -Filter WindowsImageDownloader.pri
+Get-ChildItem .\src\WinDownloader\bin -Recurse -Filter WinDownloader.pri
 ```
 
 确认发布输出包含应用 PRI 和 XBF：
 
 ```powershell
-dotnet publish .\src\WindowsImageDownloader\WindowsImageDownloader.csproj -c Debug -r win-x64 --self-contained false -nologo -p:Platform=x64 -v minimal
-Get-ChildItem .\src\WindowsImageDownloader\bin\Debug\net10.0-windows10.0.26100.0\win-x64\publish -Include WindowsImageDownloader.pri,*.xbf -Recurse -File
+dotnet publish .\src\WinDownloader\WinDownloader.csproj -c Debug -r win-x64 --self-contained false -nologo -p:Platform=x64 -v minimal
+Get-ChildItem .\src\WinDownloader\bin\Debug\net10.0-windows10.0.26100.0\win-x64\publish -Include WinDownloader.pri,*.xbf -Recurse -File
 ```
 
 需要确认资源键是否进入 PRI 时，可 dump：
 
 ```powershell
 $makepri = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windows.sdk.buildtools\10.0.28000.1839\bin\10.0.28000.0\x64\makepri.exe'
-$pri = '.\src\WindowsImageDownloader\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\WindowsImageDownloader.pri'
-$dump = Join-Path $env:TEMP 'WindowsImageDownloader.pri.xml'
+$pri = '.\src\WinDownloader\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\WinDownloader.pri'
+$dump = Join-Path $env:TEMP 'WinDownloader.pri.xml'
 & $makepri dump /if $pri /of $dump /dt detailed
 Select-String -Path $dump -Pattern 'Settings_RestartCard|Nav_Selection|Download_Title'
 ```

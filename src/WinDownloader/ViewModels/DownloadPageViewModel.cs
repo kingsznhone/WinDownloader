@@ -10,30 +10,35 @@ namespace WinDownloader.ViewModels;
 
 public sealed partial class DownloadPageViewModel : ObservableObject, IDisposable
 {
-    private readonly ITaskOrchestratorService _orchestrator;
+    private readonly IDownloadTaskOrchestratorService _downloadOrchestrator;
+    private readonly IEsdToIsoOrchestratorService _isoOrchestrator;
     private readonly IDownloadTaskPathService _pathService;
     private readonly DispatcherQueue _dispatcherQueue;
 
     public DownloadPageViewModel(
-        ITaskOrchestratorService orchestrator,
+        IDownloadTaskOrchestratorService downloadOrchestrator,
+        IEsdToIsoOrchestratorService isoOrchestrator,
         IDownloadTaskPathService pathService)
     {
-        ArgumentNullException.ThrowIfNull(orchestrator);
+        ArgumentNullException.ThrowIfNull(downloadOrchestrator);
+        ArgumentNullException.ThrowIfNull(isoOrchestrator);
         ArgumentNullException.ThrowIfNull(pathService);
 
-        _orchestrator = orchestrator;
+        _downloadOrchestrator = downloadOrchestrator;
+        _isoOrchestrator = isoOrchestrator;
         _pathService = pathService;
-        // Captured on UI thread; orchestrator events arrive on thread-pool threads.
+        // Captured on UI thread; service events arrive on thread-pool threads.
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         // Populate from tasks already loaded at startup.
-        foreach (var task in orchestrator.Tasks)
-            Items.Add(new DownloadTaskItemViewModel(task, orchestrator, pathService));
+        foreach (var task in downloadOrchestrator.Tasks)
+            Items.Add(new DownloadTaskItemViewModel(task, downloadOrchestrator, isoOrchestrator, pathService));
 
-        orchestrator.TaskAdded   += OnTaskAdded;
-        orchestrator.TaskRemoved += OnTaskRemoved;
-        orchestrator.TaskChanged += OnTaskChanged;
-        orchestrator.ActiveTaskCountChanged += OnActiveTaskCountChanged;
+        downloadOrchestrator.TaskAdded   += OnTaskAdded;
+        downloadOrchestrator.TaskRemoved += OnTaskRemoved;
+        downloadOrchestrator.TaskChanged += OnTaskChanged;
+        downloadOrchestrator.ActiveTaskCountChanged += OnActiveTaskCountChanged;
+        isoOrchestrator.ActiveTaskCountChanged += OnActiveTaskCountChanged;
 
         UpdatePendingCount();
     }
@@ -47,7 +52,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
     private int _pendingTaskCount;
 
-    /// <summary>Count of active download or ISO conversion workers.</summary>
+    /// <summary>Count of active download and ISO conversion workers.</summary>
     public int PendingTaskCount
     {
         get => _pendingTaskCount;
@@ -65,7 +70,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
     private void OnTaskAdded(object? sender, DownloadTask task) =>
         _dispatcherQueue.TryEnqueue(() =>
         {
-            Items.Insert(0, new DownloadTaskItemViewModel(task, _orchestrator, _pathService));
+            Items.Insert(0, new DownloadTaskItemViewModel(task, _downloadOrchestrator, _isoOrchestrator, _pathService));
             NotifyItemsStateChanged();
         });
 
@@ -89,7 +94,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
     private void UpdatePendingCount()
     {
-        PendingTaskCount = _orchestrator.ActiveTaskCount;
+        PendingTaskCount = _downloadOrchestrator.ActiveTaskCount + _isoOrchestrator.ActiveTaskCount;
     }
 
     private void NotifyItemsStateChanged()
@@ -101,10 +106,11 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
     public void Dispose()
     {
-        _orchestrator.TaskAdded   -= OnTaskAdded;
-        _orchestrator.TaskRemoved -= OnTaskRemoved;
-        _orchestrator.TaskChanged -= OnTaskChanged;
-        _orchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
+        _downloadOrchestrator.TaskAdded   -= OnTaskAdded;
+        _downloadOrchestrator.TaskRemoved -= OnTaskRemoved;
+        _downloadOrchestrator.TaskChanged -= OnTaskChanged;
+        _downloadOrchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
+        _isoOrchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
         foreach (var item in Items)
             item.Dispose();
     }

@@ -1,4 +1,6 @@
-namespace WinDownloader.Iso.Interfaces;
+using WinDownloader.Models;
+
+namespace WinDownloader.Interfaces;
 
 /// <summary>
 /// ESD 到 ISO 转换服务。

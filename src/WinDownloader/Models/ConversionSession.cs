@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using ManagedWimLib;
+using WinDownloader.Iso;
 using WinDownloader.Wim;
 
-namespace WinDownloader.Iso;
+namespace WinDownloader.Models;
 
 internal sealed class ConversionSession
 {

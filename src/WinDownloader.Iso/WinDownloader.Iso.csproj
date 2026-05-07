@@ -8,17 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ManagedWimLib" Version="2.6.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="oscdimg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\WinDownloader.Wim\WinDownloader.Wim.csproj" />
   </ItemGroup>
 
 </Project>

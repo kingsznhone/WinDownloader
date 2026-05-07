@@ -2,22 +2,20 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using Microsoft.Data.Sqlite;
 using WinDownloader.Interfaces;
-using WinDownloader.Iso;
-using WinDownloader.Iso.Interfaces;
 using WinDownloader.Models;
 
 namespace WinDownloader.Services;
 
 /// <summary>
-/// Implements <see cref="ITaskOrchestratorService"/> for ESD-only download tasks.
+/// Implements <see cref="IDownloadTaskOrchestratorService"/> for ESD download tasks.
 /// </summary>
-public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDisposable
+public sealed class DownloadTaskOrchestratorService : IDownloadTaskOrchestratorService, IAsyncDisposable
 {
     private readonly ICacheService _cache;
     private readonly IEsdDownloadPipeline _downloadPipeline;
-    private readonly IEsdToIsoConversionService _isoConversionService;
     private readonly IDownloadTaskPathService _pathService;
     private readonly IAppSettings _settings;
+    private readonly IEsdToIsoOrchestratorService _isoOrchestrator;
 
     // ── In-memory task registry ───────────────────────────────────────────────
     private readonly ObservableCollection<DownloadTask> _tasks = [];
@@ -27,35 +25,30 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _activeCts = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, byte> _cancelledTasks = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Task> _downloadWorkers = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, Task> _isoConversionWorkers = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, EsdToIsoTaskSnapshot> _isoSnapshots = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _shutdownCts = new();
-    private readonly object _isoWorkerLock = new();
     private static readonly TimeSpan _downloadSlotPollInterval = TimeSpan.FromMilliseconds(250);
-    private static readonly TimeSpan _conversionSlotPollInterval = TimeSpan.FromMilliseconds(250);
     private int _activeDownloadSlotCount;
     private int _activeDownloadCount;
-    private int _activeIsoConversionCount;
     private bool _disposed;
 
-    public TaskOrchestratorService(
+    public DownloadTaskOrchestratorService(
         ICacheService cache,
         IEsdDownloadPipeline downloadPipeline,
-        IEsdToIsoConversionService isoConversionService,
         IDownloadTaskPathService pathService,
-        IAppSettings settings)
+        IAppSettings settings,
+        IEsdToIsoOrchestratorService isoOrchestrator)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(downloadPipeline);
-        ArgumentNullException.ThrowIfNull(isoConversionService);
         ArgumentNullException.ThrowIfNull(pathService);
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(isoOrchestrator);
 
         _cache = cache;
         _downloadPipeline = downloadPipeline;
-        _isoConversionService = isoConversionService;
         _pathService = pathService;
         _settings = settings;
+        _isoOrchestrator = isoOrchestrator;
     }
 
     // ── IHostedService ────────────────────────────────────────────────────────
@@ -96,12 +89,12 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
     {
         await _shutdownCts.CancelAsync().ConfigureAwait(false);
 
-        var workers = _downloadWorkers.Values.Concat(_isoConversionWorkers.Values).ToArray();
+        var workers = _downloadWorkers.Values.ToArray();
         if (workers.Length > 0)
             await Task.WhenAll(workers).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    // ── ITaskOrchestratorService ──────────────────────────────────────────────
+    // ── IDownloadTaskOrchestratorService ─────────────────────────────────────
 
     /// <inheritdoc/>
     public IReadOnlyList<DownloadTask> Tasks => _tasks;
@@ -252,40 +245,6 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
     }
 
     /// <inheritdoc/>
-    public Task<TaskOperationResult> ConvertToIsoAsync(string sha256, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(sha256);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!_taskMap.TryGetValue(sha256, out var task))
-            return Task.FromResult(TaskOperationResult.Failure("Task not found, unable to convert to ISO."));
-
-        if (task.State != TaskState.Completed)
-            return Task.FromResult(TaskOperationResult.Failure($"Can only convert tasks that are completed, current state is {task.State}."));
-
-        var esdPath = _pathService.ResolveEsdPath(task);
-        if (!File.Exists(esdPath))
-            return Task.FromResult(TaskOperationResult.Failure("Local ESD file not found, please re-download before converting."));
-
-        if (File.Exists(_pathService.ResolveIsoPath(task)))
-            return Task.FromResult(TaskOperationResult.Success("ISO file already exists."));
-
-        lock (_isoWorkerLock)
-        {
-            if (_isoConversionWorkers.ContainsKey(task.Sha256))
-                return Task.FromResult(TaskOperationResult.Failure("Task is already in the ISO conversion queue."));
-
-            PublishIsoSnapshot(task, CreateIsoSnapshot(task, EsdToIsoTaskState.NotStarted, EsdToIsoStage.Preparing, 0));
-
-            var worker = Task.Run(() => ProcessIsoConversionAsync(task, _shutdownCts.Token));
-            _isoConversionWorkers[task.Sha256] = worker;
-            _ = worker.ContinueWith(_ => TryRemoveIsoConversionWorker(task.Sha256, worker), TaskScheduler.Default);
-        }
-
-        return Task.FromResult(TaskOperationResult.Success("Task has been added to the ISO conversion queue."));
-    }
-
-    /// <inheritdoc/>
     public async Task<TaskOperationResult> DeleteAsync(string sha256, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sha256);
@@ -296,11 +255,11 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
         if (task.State != TaskState.Completed)
             return TaskOperationResult.Failure($"Can only delete tasks that are completed.");
 
-        if (_isoConversionWorkers.ContainsKey(sha256))
+        if (_isoOrchestrator.IsConversionQueuedOrRunning(sha256))
             return TaskOperationResult.Failure("ISO conversion is not yet complete, please wait until it finishes before deleting the file.");
 
         TryDeleteFile(_pathService.ResolveEsdPath(task));
-        _isoSnapshots.TryRemove(sha256, out _);
+        _isoOrchestrator.ClearSnapshot(sha256);
 
         await _cache.DeleteTaskAsync(sha256, cancellationToken).ConfigureAwait(false);
         _taskMap.TryRemove(sha256, out _);
@@ -460,106 +419,6 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
         }
     }
 
-    // ── ISO conversion worker ────────────────────────────────────────────────
-
-    private async Task ProcessIsoConversionAsync(DownloadTask task, CancellationToken shutdownToken)
-    {
-        var acquiredSlot = false;
-        var countedActive = false;
-        EventHandler<EsdToIsoTaskSnapshot>? progressHandler = null;
-
-        try
-        {
-            acquiredSlot = await WaitForIsoConversionSlotAsync(task, shutdownToken).ConfigureAwait(false);
-            if (!acquiredSlot || !_taskMap.ContainsKey(task.Sha256))
-                return;
-
-            countedActive = true;
-            IncrementActiveTaskCount();
-
-            var sourceEsdPath = _pathService.ResolveEsdPath(task);
-            if (!File.Exists(sourceEsdPath))
-            {
-                PublishIsoSnapshot(task, CreateIsoSnapshot(
-                    task,
-                    EsdToIsoTaskState.Failed,
-                    EsdToIsoStage.Failed,
-                    0,
-                    errorMessage: "Local ESD file does not exist, please re-download and try converting again.",
-                    completedAt: DateTimeOffset.Now));
-                return;
-            }
-
-            if (File.Exists(_pathService.ResolveIsoPath(task)))
-            {
-                PublishIsoSnapshot(task, CreateIsoSnapshot(
-                    task,
-                    EsdToIsoTaskState.Completed,
-                    EsdToIsoStage.Completed,
-                    1,
-                    currentFile: _pathService.ResolveIsoPath(task),
-                    completedAt: DateTimeOffset.Now));
-                return;
-            }
-
-            progressHandler = (_, snapshot) =>
-            {
-                if (string.Equals(snapshot.SourceEsdPath, sourceEsdPath, StringComparison.OrdinalIgnoreCase))
-                    PublishIsoSnapshot(task, snapshot);
-            };
-            _isoConversionService.ProgressChanged += progressHandler;
-
-            var request = new EsdToIsoRequest(
-                sourceEsdPath,
-                _pathService.ResolveIsoStagingDirectory(task),
-                BuildIsoVolumeLabel(task),
-                KeepIntermediateFiles: false);
-
-            var result = await _isoConversionService.ConvertAsync(request, shutdownToken).ConfigureAwait(false);
-            if (!result.Succeeded)
-            {
-                PublishIsoSnapshot(task, CreateIsoSnapshot(
-                    task,
-                    EsdToIsoTaskState.Failed,
-                    EsdToIsoStage.Failed,
-                    _isoSnapshots.TryGetValue(task.Sha256, out var lastSnapshot) ? lastSnapshot.Progress : 0,
-                    errorMessage: result.ErrorMessage ?? "ISO conversion failed.",
-                    completedAt: result.CompletedAt));
-            }
-        }
-        catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
-        {
-            PublishIsoSnapshot(task, CreateIsoSnapshot(
-                task,
-                EsdToIsoTaskState.Canceled,
-                EsdToIsoStage.Failed,
-                _isoSnapshots.TryGetValue(task.Sha256, out var lastSnapshot) ? lastSnapshot.Progress : 0,
-                errorMessage: "ISO conversion has been canceled.",
-                completedAt: DateTimeOffset.Now));
-        }
-        catch (Exception ex)
-        {
-            PublishIsoSnapshot(task, CreateIsoSnapshot(
-                task,
-                EsdToIsoTaskState.Failed,
-                EsdToIsoStage.Failed,
-                _isoSnapshots.TryGetValue(task.Sha256, out var lastSnapshot) ? lastSnapshot.Progress : 0,
-                errorMessage: ex.Message,
-                completedAt: DateTimeOffset.Now));
-        }
-        finally
-        {
-            if (progressHandler is not null)
-                _isoConversionService.ProgressChanged -= progressHandler;
-
-            if (acquiredSlot)
-                ReleaseIsoConversionSlot();
-
-            if (countedActive)
-                DecrementActiveTaskCount();
-        }
-    }
-
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static string FormatBytes(long bytes) => bytes switch
@@ -611,37 +470,6 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
 
     private void ReleaseDownloadSlot() => Interlocked.Decrement(ref _activeDownloadSlotCount);
 
-    private async Task<bool> WaitForIsoConversionSlotAsync(DownloadTask task, CancellationToken shutdownToken)
-    {
-        while (!shutdownToken.IsCancellationRequested)
-        {
-            if (!_taskMap.ContainsKey(task.Sha256) || task.State != TaskState.Completed)
-                return false;
-
-            if (TryAcquireIsoConversionSlot())
-                return true;
-
-            await Task.Delay(_conversionSlotPollInterval, shutdownToken).ConfigureAwait(false);
-        }
-
-        return false;
-    }
-
-    private bool TryAcquireIsoConversionSlot()
-    {
-        while (true)
-        {
-            var current = Volatile.Read(ref _activeIsoConversionCount);
-            if (current >= 1)
-                return false;
-
-            if (Interlocked.CompareExchange(ref _activeIsoConversionCount, current + 1, current) == current)
-                return true;
-        }
-    }
-
-    private void ReleaseIsoConversionSlot() => Interlocked.Decrement(ref _activeIsoConversionCount);
-
     private void IncrementActiveTaskCount()
     {
         Interlocked.Increment(ref _activeDownloadCount);
@@ -665,56 +493,8 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
         catch (UnauthorizedAccessException) { }
     }
 
-    private void PublishTaskChanged(DownloadTask task)
-    {
-        _isoSnapshots.TryGetValue(task.Sha256, out var isoSnapshot);
-        TaskChanged?.Invoke(this, DownloadTaskSnapshot.FromTask(task, isoSnapshot));
-    }
-
-    private void PublishIsoSnapshot(DownloadTask task, EsdToIsoTaskSnapshot snapshot)
-    {
-        _isoSnapshots[task.Sha256] = snapshot;
-        PublishTaskChanged(task);
-    }
-
-    private EsdToIsoTaskSnapshot CreateIsoSnapshot(
-        DownloadTask task,
-        EsdToIsoTaskState state,
-        EsdToIsoStage stage,
-        double progress,
-        string? currentFile = null,
-        string? errorMessage = null,
-        DateTimeOffset? completedAt = null)
-    {
-        var startedAt = _isoSnapshots.TryGetValue(task.Sha256, out var existing)
-            ? existing.StartedAt
-            : DateTimeOffset.Now;
-
-        return new EsdToIsoTaskSnapshot(
-            Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName),
-            _pathService.ResolveEsdPath(task),
-            state,
-            stage,
-            Math.Clamp(progress, 0, 1),
-            currentFile,
-            errorMessage,
-            _pathService.ResolveIsoPath(task),
-            startedAt,
-            completedAt,
-            DateTimeOffset.Now - startedAt);
-    }
-
-    private static string BuildIsoVolumeLabel(DownloadTask task)
-    {
-        var source = Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName);
-        var characters = source.Select(static character =>
-            char.IsLetterOrDigit(character) ? char.ToUpperInvariant(character) : '_').ToArray();
-        var label = new string(characters).Trim('_');
-        if (string.IsNullOrWhiteSpace(label))
-            label = "ESD_ISO";
-
-        return label.Length <= 32 ? label : label[..32];
-    }
+    private void PublishTaskChanged(DownloadTask task) =>
+        TaskChanged?.Invoke(this, DownloadTaskSnapshot.FromTask(task));
 
     private static void RequestCancellation(CancellationTokenSource cts) =>
         _ = Task.Run(async () =>
@@ -730,10 +510,6 @@ public sealed class TaskOrchestratorService : ITaskOrchestratorService, IAsyncDi
 
     private void TryRemoveDownloadWorker(string sha256, Task worker) =>
         ((ICollection<KeyValuePair<string, Task>>)_downloadWorkers)
-        .Remove(new KeyValuePair<string, Task>(sha256, worker));
-
-    private void TryRemoveIsoConversionWorker(string sha256, Task worker) =>
-        ((ICollection<KeyValuePair<string, Task>>)_isoConversionWorkers)
         .Remove(new KeyValuePair<string, Task>(sha256, worker));
 
     // ── IAsyncDisposable ──────────────────────────────────────────────────────

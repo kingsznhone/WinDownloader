@@ -2,6 +2,8 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.Text;
 using ManagedWimLib;
+using POC.Models;
+using POC.Services;
 using WinDownloader.Iso;
 using WinDownloader.Wim;
 
@@ -171,13 +173,9 @@ internal static class Program
                     return isoResult.Succeeded ? 0 : 1;
                 }
 
-                var request = new EsdToIsoRequest(
-                    sourcePath,
-                    Path.Combine(resolvedStagingRoot, "staging"),
-                    volumeLabel,
-                    keepIntermediateFiles,
-                    installCompression,
-                    RecompressInstallImage: recompressInstallImage);
+                var outputIsoPath = Path.Combine(
+                    Path.GetDirectoryName(sourcePath)!,
+                    Path.GetFileNameWithoutExtension(sourcePath) + ".iso");
 
                 Console.WriteLine("WindowsImageDownloader POC");
                 Console.WriteLine($"Source ESD: {sourcePath}");
@@ -188,12 +186,20 @@ internal static class Program
                 Console.WriteLine();
 
                 using var wimService = new WimProcessingService();
-                var conversionService = new EsdToIsoConversionService(wimService, new OscdimgIsoCreationService());
-                conversionService.ProgressChanged += OnProgressChanged;
+                var conversionService = new CliConversionService(wimService, new OscdimgIsoCreationService());
+                var progressReporter = new Progress<CliConversionProgress>(OnProgressChanged);
 
-                var result = await conversionService.ConvertAsync(request, linkedCancellation.Token).ConfigureAwait(false);
+                var result = await conversionService.ConvertAsync(
+                    sourcePath,
+                    Path.Combine(resolvedStagingRoot, "staging"),
+                    outputIsoPath,
+                    volumeLabel,
+                    keepIntermediateFiles,
+                    installCompression,
+                    recompressInstallImage,
+                    progressReporter,
+                    linkedCancellation.Token).ConfigureAwait(false);
 
-                conversionService.ProgressChanged -= OnProgressChanged;
                 Console.WriteLine();
                 PrintResult(result);
                 return result.Succeeded ? 0 : 1;
@@ -217,21 +223,6 @@ internal static class Program
         return await rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration(), CancellationToken.None);
     }
 
-    private static void PrintWimProgress(int row, WimOperationProgress progress)
-    {
-        var stage = $"[{progress.Stage}]";
-        var percent = progress.Percent.HasValue ? $"{progress.Percent.Value,5:0.0}%" : "      ";
-        var bytes = progress.TotalBytes is > 0
-            ? $"  {FormatBytes(progress.CompletedBytes ?? 0),10} / {FormatBytes(progress.TotalBytes.Value),-10}"
-            : string.Empty;
-        var item = !string.IsNullOrWhiteSpace(progress.CurrentItem)
-            ? $"  {Path.GetFileName(progress.CurrentItem)}"
-            : string.Empty;
-        var suffix = $"{stage,-12} {percent}{bytes}{item}";
-        Console.SetCursorPosition(0, row);
-        Console.Write(suffix.PadRight(Console.WindowWidth - 1));
-    }
-
     private static string FormatBytes(ulong bytes)
     {
         return bytes switch
@@ -243,7 +234,7 @@ internal static class Program
         };
     }
 
-    private static void PrintResult(EsdToIsoResult result)
+    private static void PrintResult(CliConversionResult result)
     {
         Console.WriteLine(result.Succeeded ? "Completed." : "Failed.");
         Console.WriteLine($"Staging: {result.StagingDirectory}");
@@ -256,83 +247,22 @@ internal static class Program
         PrintFileSize("ISO", result.IsoPath);
 
         if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
-        {
-            Console.WriteLine($"Error: {result.ErrorMessage}");
-        }
+            Console.Error.WriteLine($"Error: {result.ErrorMessage}");
 
         foreach (var warning in result.Warnings)
-        {
             Console.WriteLine($"Warning: {warning}");
-        }
     }
 
     private static void PrintFileSize(string label, string path)
     {
         if (!File.Exists(path))
-        {
             return;
-        }
 
         Console.WriteLine($"{label} size: {FormatBytes((ulong)new FileInfo(path).Length)}");
     }
 
-    private static void OnProgressChanged(object? sender, EsdToIsoTaskSnapshot snapshot)
-    {
-        Console.WriteLine(FormatSnapshot(snapshot));
-    }
-
-    private static string FormatSnapshot(EsdToIsoTaskSnapshot snapshot)
-    {
-        var percent = $"{snapshot.Progress * 100,5:0.0}%";
-        var elapsed = snapshot.Elapsed.ToString(@"hh\:mm\:ss");
-        var details = BuildSnapshotDetails(snapshot);
-        return $"{elapsed} {percent} {snapshot.State}/{snapshot.Stage}: {details}";
-    }
-
-    private static string BuildSnapshotDetails(EsdToIsoTaskSnapshot snapshot)
-    {
-        var file = !string.IsNullOrWhiteSpace(snapshot.CurrentFile)
-            ? $" ({Path.GetFileName(snapshot.CurrentFile)})"
-            : string.Empty;
-
-        if (snapshot.WimProgress is { } wim)
-        {
-            return wim.Stage switch
-            {
-                WimOperationStage.Extracting => wim.Percent.HasValue
-                    ? $"正在提取映像 WIM {wim.Percent.Value:0.0}%{file}"
-                    : $"正在提取映像{file}",
-                WimOperationStage.Writing => wim.Percent.HasValue
-                    ? $"正在写入映像 WIM {wim.Percent.Value:0.0}% ({wim.CurrentItem})"
-                    : $"正在写入映像{file}",
-                WimOperationStage.Verifying => wim.Percent.HasValue
-                    ? $"正在校验数据流 WIM {wim.Percent.Value:0.0}%"
-                    : $"正在校验数据流{file}",
-                WimOperationStage.Metadata => !string.IsNullOrWhiteSpace(wim.CurrentItem)
-                    ? $"正在处理元数据 ({wim.CurrentItem})"
-                    : "正在处理元数据",
-                WimOperationStage.Completed => $"完成 WIM 100.0%{file}",
-                _ => $"{wim.Stage}{file}"
-            };
-        }
-
-        return snapshot.Stage switch
-        {
-            EsdToIsoStage.Preparing => $"正在清理并准备 staging 目录{file}",
-            EsdToIsoStage.InspectingSource => $"正在读取 ESD 映像信息{file}",
-            EsdToIsoStage.ApplyingSetupMedia => $"正在展开 image 1 到 ISO staging{file}",
-            EsdToIsoStage.BuildingBootWim => $"正在生成 boot.wim{file}",
-            EsdToIsoStage.BuildingInstallImage => $"正在生成 install.wim{file}",
-            EsdToIsoStage.CreatingIso => snapshot.IsoProgress is not null
-                ? $"正在创建 ISO {snapshot.IsoProgress.Percent:0}%{file}"
-                : $"正在调用 oscdimg 创建 ISO{file}",
-            EsdToIsoStage.Completed => $"ESD 到 ISO 转换完成{file}",
-            EsdToIsoStage.Failed => !string.IsNullOrWhiteSpace(snapshot.ErrorMessage)
-                ? $"ESD 到 ISO 转换失败: {snapshot.ErrorMessage}"
-                : "ESD 到 ISO 转换失败",
-            _ => $"{snapshot.Stage}{file}"
-        };
-    }
+    private static void OnProgressChanged(CliConversionProgress p)
+        => Console.WriteLine($"{p.Progress * 100,5:0.0}% [{p.Stage}] {p.Message}");
 
     private sealed class ConsoleLogScope : IDisposable
     {

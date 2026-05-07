@@ -41,6 +41,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WinDownloader.Iso\WinDownloader.Iso.csproj" />
+    <ProjectReference Include="..\WinDownloader.Wim\WinDownloader.Wim.csproj" />
   </ItemGroup>
 
   <Target Name="CopyWinUIResourcesToPublishDirectory" AfterTargets="Publish" Condition="'$(PublishDir)' != ''">

@@ -1,6 +1,6 @@
 using ManagedWimLib;
 
-namespace WinDownloader.Iso;
+namespace WinDownloader.Models;
 
 public sealed record EsdToIsoRequest(
     string SourceEsdPath,

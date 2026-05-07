@@ -1,6 +1,7 @@
+using WinDownloader.Iso;
 using WinDownloader.Wim;
 
-namespace WinDownloader.Iso;
+namespace WinDownloader.Models;
 
 public sealed record EsdToIsoResult(
     string SourceEsdPath,

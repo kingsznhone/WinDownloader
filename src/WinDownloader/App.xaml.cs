@@ -42,7 +42,6 @@ public partial class App : Application
         builder.Services.AddSingleton<IDownloadService, DownloadService>();
         builder.Services.AddSingleton<IDownloadTaskPathService, DownloadTaskPathService>();
         builder.Services.AddSingleton<IEsdDownloadPipeline, EsdDownloadPipeline>();
-        builder.Services.AddSingleton<ITaskOrchestratorService, TaskOrchestratorService>();
         builder.Services.AddSingleton<SelectionViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<DownloadPageViewModel>();
@@ -50,14 +49,23 @@ public partial class App : Application
         builder.Services.AddSingleton<IWimProcessingService, WimProcessingService>();
         builder.Services.AddSingleton<IIsoCreationService, OscdimgIsoCreationService>();
         builder.Services.AddSingleton<IEsdToIsoConversionService, EsdToIsoConversionService>();
+        builder.Services.AddSingleton<EsdToIsoOrchestratorService>();
+        builder.Services.AddSingleton<IEsdToIsoOrchestratorService>(static sp =>
+            sp.GetRequiredService<EsdToIsoOrchestratorService>());
+        builder.Services.AddSingleton<DownloadTaskOrchestratorService>();
+        builder.Services.AddSingleton<IDownloadTaskOrchestratorService>(static sp =>
+            sp.GetRequiredService<DownloadTaskOrchestratorService>());
 
         // IHostedService registration order determines startup order:
         // 1. CacheService.StartAsync → EnsureSchemaAsync (must run before tasks are loaded)
-        // 2. TaskOrchestratorService.StartAsync → LoadTasks
+        // 2. DownloadTaskOrchestratorService.StartAsync → LoadTasks
+        // 3. EsdToIsoOrchestratorService.StartAsync → no-op; StopAsync cancels conversion workers first
         builder.Services.AddHostedService(static sp =>
             (CacheService)sp.GetRequiredService<ICacheService>());
         builder.Services.AddHostedService(static sp =>
-            (TaskOrchestratorService)sp.GetRequiredService<ITaskOrchestratorService>());
+            sp.GetRequiredService<DownloadTaskOrchestratorService>());
+        builder.Services.AddHostedService(static sp =>
+            sp.GetRequiredService<EsdToIsoOrchestratorService>());
 
         return builder.Build();
     }
@@ -67,7 +75,7 @@ public partial class App : Application
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         // StartAsync runs IHostedService.StartAsync for all registered hosted services
-        // in registration order: CacheService (schema) → TaskOrchestratorService (load tasks).
+        // in registration order: CacheService (schema) → download orchestrator (load tasks) → ISO orchestrator.
         await _host!.StartAsync();
 
         _window = new MainWindow();
