@@ -4,7 +4,9 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![WinUI 3](https://img.shields.io/badge/WinUI-3-0078D4)](https://docs.microsoft.com/zh-cn/windows/apps/winui/winui3/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D6)](https://www.microsoft.com/windows)
-
+<p align="center">
+  <img src="./readme/favicon.png" width="128" height="128" alt="WindowsImageDownloader">
+</p>
 > **English version: [README.md](README.md)**
 
 一个基于 **WinUI 3** 和 **.NET 10** 的 Windows 安装映像下载工具。从 **Microsoft Update Catalog** 获取产品目录、筛选 ESD 文件、多线程断点续传下载、SHA-256 校验、SQLite 任务持久化，并支持将下载完成的 ESD 文件转换为可启动的 ISO 映像。
@@ -94,17 +96,17 @@ src/
 
 ## 🧱 架构概览
 
-| 层级 | 技术 |
-|-------|-----------|
-| UI 框架 | WinUI 3（`Microsoft.UI.Xaml`） |
-| 运行时 | .NET 10 + Windows App SDK 2.0 |
-| MVVM | CommunityToolkit.Mvvm |
-| DI / 生命周期 | Microsoft.Extensions.Hosting + DI |
-| 下载引擎 | [Downloader](https://github.com/bezzad/Downloader) NuGet |
-| WIM 处理 | [ManagedWimLib](https://github.com/kingseva/ManagedWimLib) |
-| ISO 创建 | 内置 `oscdimg.exe` |
-| 数据库 | Microsoft.Data.Sqlite |
-| 设置存储 | JSON 文件 |
+| 层级          | 技术                                                       |
+| ------------- | ---------------------------------------------------------- |
+| UI 框架       | WinUI 3（`Microsoft.UI.Xaml`）                             |
+| 运行时        | .NET 10 + Windows App SDK 2.0                              |
+| MVVM          | CommunityToolkit.Mvvm                                      |
+| DI / 生命周期 | Microsoft.Extensions.Hosting + DI                          |
+| 下载引擎      | [Downloader](https://github.com/bezzad/Downloader) NuGet   |
+| WIM 处理      | [ManagedWimLib](https://github.com/kingseva/ManagedWimLib) |
+| ISO 创建      | 内置 `oscdimg.exe`                                         |
+| 数据库        | Microsoft.Data.Sqlite                                      |
+| 设置存储      | JSON 文件                                                  |
 
 ### 数据流
 
@@ -123,21 +125,21 @@ src/
 
 ## 📚 文档
 
-| 文档 | 说明 |
-|----------|------|
-| [docs/WORKFLOW.md](docs/WORKFLOW.md) | AI Agent标准工作流程 |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 总体架构、DI、数据流 |
-| [docs/MODULE_CATALOG.md](docs/MODULE_CATALOG.md) | 产品目录获取 |
-| [docs/MODULE_DOWNLOAD.md](docs/MODULE_DOWNLOAD.md) | ESD 下载、SHA-256、SQLite、任务编排 |
-| [docs/MODULE_CONVERSION.md](docs/MODULE_CONVERSION.md) | ESD → ISO 转换流水线 |
-| [docs/MODULE_WIM.md](docs/MODULE_WIM.md) | `WinDownloader.Wim` 共享库 |
-| [docs/MODULE_ISO.md](docs/MODULE_ISO.md) | `WinDownloader.Iso` 共享库 |
-| [docs/MODULE_MODELS.md](docs/MODULE_MODELS.md) | 数据模型 |
-| [docs/MODULE_UI.md](docs/MODULE_UI.md) | WinUI 页面、控件、ViewModel |
-| [docs/MODULE_SETTINGS.md](docs/MODULE_SETTINGS.md) | 设置服务和设置页 |
-| [docs/MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md) | MRT Core 本地化 |
-| [docs/MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md) | 打包与发布 |
-| [docs/MODULE_POC.md](docs/MODULE_POC.md) | POC 控制台宿主 |
+| 文档                                                       | 说明                                |
+| ---------------------------------------------------------- | ----------------------------------- |
+| [docs/WORKFLOW.md](docs/WORKFLOW.md)                       | AI Agent标准工作流程                |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)               | 总体架构、DI、数据流                |
+| [docs/MODULE_CATALOG.md](docs/MODULE_CATALOG.md)           | 产品目录获取                        |
+| [docs/MODULE_DOWNLOAD.md](docs/MODULE_DOWNLOAD.md)         | ESD 下载、SHA-256、SQLite、任务编排 |
+| [docs/MODULE_CONVERSION.md](docs/MODULE_CONVERSION.md)     | ESD → ISO 转换流水线                |
+| [docs/MODULE_WIM.md](docs/MODULE_WIM.md)                   | `WinDownloader.Wim` 共享库          |
+| [docs/MODULE_ISO.md](docs/MODULE_ISO.md)                   | `WinDownloader.Iso` 共享库          |
+| [docs/MODULE_MODELS.md](docs/MODULE_MODELS.md)             | 数据模型                            |
+| [docs/MODULE_UI.md](docs/MODULE_UI.md)                     | WinUI 页面、控件、ViewModel         |
+| [docs/MODULE_SETTINGS.md](docs/MODULE_SETTINGS.md)         | 设置服务和设置页                    |
+| [docs/MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md) | MRT Core 本地化                     |
+| [docs/MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md)       | 打包与发布                          |
+| [docs/MODULE_POC.md](docs/MODULE_POC.md)                   | POC 控制台宿主                      |
 
 ---
 

@@ -1,11 +1,19 @@
 # WindowsImageDownloader
 
+
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![WinUI 3](https://img.shields.io/badge/WinUI-3-0078D4)](https://docs.microsoft.com/en-us/windows/apps/winui/winui3/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D6)](https://www.microsoft.com/windows)
 
+<p align="center">
+  <img src="./readme/favicon.png" width="128" height="128" alt="WindowsImageDownloader">
+</p>
+
 > **中文版说明请见 [README_ZH.md](README_ZH.md)**
+
+
 
 A Windows installation image downloader built with **WinUI 3** and **.NET 10**. It fetches product catalogs from the **Microsoft Update Catalog**, filters ESD files, downloads them with multi-threaded resumable support, verifies SHA-256 checksums, persists tasks via SQLite, and optionally converts downloaded ESD files to bootable ISO images.
 
@@ -96,17 +104,17 @@ src/
 
 ## 🧱 Architecture Overview
 
-| Layer | Technology |
-|-------|-----------|
-| UI Framework | WinUI 3 (`Microsoft.UI.Xaml`) |
-| Runtime | .NET 10 + Windows App SDK 2.0 |
-| MVVM | CommunityToolkit.Mvvm |
-| DI / Lifecycle | Microsoft.Extensions.Hosting + DI |
-| Download Engine | [Downloader](https://github.com/bezzad/Downloader) NuGet |
-| WIM Processing | [ManagedWimLib](https://github.com/kingseva/ManagedWimLib) |
-| ISO Creation | Bundled `oscdimg.exe` |
-| Database | Microsoft.Data.Sqlite |
-| Settings | JSON file |
+| Layer           | Technology                                                 |
+| --------------- | ---------------------------------------------------------- |
+| UI Framework    | WinUI 3 (`Microsoft.UI.Xaml`)                              |
+| Runtime         | .NET 10 + Windows App SDK 2.0                              |
+| MVVM            | CommunityToolkit.Mvvm                                      |
+| DI / Lifecycle  | Microsoft.Extensions.Hosting + DI                          |
+| Download Engine | [Downloader](https://github.com/bezzad/Downloader) NuGet   |
+| WIM Processing  | [ManagedWimLib](https://github.com/kingseva/ManagedWimLib) |
+| ISO Creation    | Bundled `oscdimg.exe`                                      |
+| Database        | Microsoft.Data.Sqlite                                      |
+| Settings        | JSON file                                                  |
 
 ### Data Flow
 
@@ -125,21 +133,21 @@ Selection Page
 
 ## 📚 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [docs/WORKFLOW.md](docs/WORKFLOW.md) | Standard workflow for AI agent |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Overall architecture, DI, data flow |
-| [docs/MODULE_CATALOG.md](docs/MODULE_CATALOG.md) | Product catalog fetching |
-| [docs/MODULE_DOWNLOAD.md](docs/MODULE_DOWNLOAD.md) | ESD download, SHA-256, SQLite, task orchestration |
-| [docs/MODULE_CONVERSION.md](docs/MODULE_CONVERSION.md) | ESD → ISO conversion pipeline |
-| [docs/MODULE_WIM.md](docs/MODULE_WIM.md) | `WinDownloader.Wim` shared library |
-| [docs/MODULE_ISO.md](docs/MODULE_ISO.md) | `WinDownloader.Iso` shared library |
-| [docs/MODULE_MODELS.md](docs/MODULE_MODELS.md) | Data models |
-| [docs/MODULE_UI.md](docs/MODULE_UI.md) | WinUI pages, controls, ViewModels |
-| [docs/MODULE_SETTINGS.md](docs/MODULE_SETTINGS.md) | Settings service and settings page |
-| [docs/MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md) | Localization with MRT Core |
-| [docs/MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md) | Packaging and publishing |
-| [docs/MODULE_POC.md](docs/MODULE_POC.md) | POC console host |
+| Document                                                   | Description                                       |
+| ---------------------------------------------------------- | ------------------------------------------------- |
+| [docs/WORKFLOW.md](docs/WORKFLOW.md)                       | Standard workflow for AI agent                    |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)               | Overall architecture, DI, data flow               |
+| [docs/MODULE_CATALOG.md](docs/MODULE_CATALOG.md)           | Product catalog fetching                          |
+| [docs/MODULE_DOWNLOAD.md](docs/MODULE_DOWNLOAD.md)         | ESD download, SHA-256, SQLite, task orchestration |
+| [docs/MODULE_CONVERSION.md](docs/MODULE_CONVERSION.md)     | ESD → ISO conversion pipeline                     |
+| [docs/MODULE_WIM.md](docs/MODULE_WIM.md)                   | `WinDownloader.Wim` shared library                |
+| [docs/MODULE_ISO.md](docs/MODULE_ISO.md)                   | `WinDownloader.Iso` shared library                |
+| [docs/MODULE_MODELS.md](docs/MODULE_MODELS.md)             | Data models                                       |
+| [docs/MODULE_UI.md](docs/MODULE_UI.md)                     | WinUI pages, controls, ViewModels                 |
+| [docs/MODULE_SETTINGS.md](docs/MODULE_SETTINGS.md)         | Settings service and settings page                |
+| [docs/MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md) | Localization with MRT Core                        |
+| [docs/MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md)       | Packaging and publishing                          |
+| [docs/MODULE_POC.md](docs/MODULE_POC.md)                   | POC console host                                  |
 
 ---
 
