@@ -124,6 +124,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    // ── About ────────────────────────────────────────────────────────────────
+
+    public string AppVersion
+        => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
+
     // ── Reset ────────────────────────────────────────────────────────────────
 
     [RelayCommand]

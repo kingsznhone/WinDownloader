@@ -126,6 +126,15 @@
   <data name="Settings_ResetButton.Content" xml:space="preserve">
     <value>重置</value>
   </data>
+  <data name="Settings_AboutSection.Text" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="Settings_VersionCard.Header" xml:space="preserve">
+    <value>版本</value>
+  </data>
+  <data name="Settings_VersionCard.Description" xml:space="preserve">
+    <value>当前应用版本</value>
+  </data>
   <data name="RawFile_DownloadEsd.Text" xml:space="preserve">
     <value>下载 ESD</value>
   </data>

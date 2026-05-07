@@ -12,7 +12,7 @@
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance Type=viewmodels:SelectionViewModel, IsDesignTimeCreatable=False}">
 
-    <Grid Padding="28">
+    <Grid Padding="36,48,36,36">
         <StackPanel
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
@@ -30,7 +30,6 @@
         </StackPanel>
 
         <Grid
-            Padding="12,24,12,12"
             RowSpacing="18"
             Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
             <Grid.RowDefinitions>

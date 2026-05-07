@@ -10,7 +10,7 @@
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance Type=viewmodels:SettingsViewModel, IsDesignTimeCreatable=False}">
 
-    <ScrollViewer Padding="24,16">
+    <ScrollViewer Padding="36,48,36,36">
         <StackPanel Spacing="4"  HorizontalAlignment="Stretch">
 
             <!-- ── Download Setting ─────────────────────────────────────────────────── -->
@@ -18,7 +18,7 @@
                 x:Uid="Settings_DownloadSection"
                 Text="下载"
                 Style="{StaticResource TitleTextBlockStyle}"
-                Margin="0,0,0,12" />
+                Margin="0,0,0,12" /> 
 
             <!-- Download Directory -->
             <ctk:SettingsCard x:Uid="Settings_DownloadDirectory" Header="下载目录" Description="ESD 文件与转换输出的保存位置">
@@ -146,6 +146,21 @@
                     Content="重置"
                     Style="{StaticResource AccentButtonStyle}"
                     Command="{x:Bind ViewModel.ResetCommand}" />
+            </ctk:SettingsCard>
+
+            <!-- ── About ─────────────────────────────────────────────────────── -->
+            <TextBlock
+                x:Uid="Settings_AboutSection"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Margin="0,16,0,12" />
+
+            <ctk:SettingsCard x:Uid="Settings_VersionCard">
+                <ctk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE946;" />
+                </ctk:SettingsCard.HeaderIcon>
+                <TextBlock
+                    Text="{x:Bind ViewModel.AppVersion, Mode=OneTime}"
+                    VerticalAlignment="Center" />
             </ctk:SettingsCard>
 
         </StackPanel>

@@ -126,6 +126,15 @@
   <data name="Settings_ResetButton.Content" xml:space="preserve">
     <value>Reset</value>
   </data>
+  <data name="Settings_AboutSection.Text" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_VersionCard.Header" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Settings_VersionCard.Description" xml:space="preserve">
+    <value>Current application version</value>
+  </data>
   <data name="RawFile_DownloadEsd.Text" xml:space="preserve">
     <value>Download ESD</value>
   </data>

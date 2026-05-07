@@ -17,6 +17,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="favicon.ico">
@@ -69,6 +72,14 @@
       <RemovingFolders Include="@(RemovingFiles->'%(RootDir)%(Directory)')" />
     </ItemGroup>
     <RemoveDir Directories="@(RemovingFolders)" />
+  </Target>
+
+  <Target Name="RemoveFoldersWithMuiFilesOnPublish" AfterTargets="Publish" Condition="'$(PublishDir)' != ''">
+    <ItemGroup>
+      <RemovingPublishFiles Include="$(PublishDir)*\*.mui" Exclude="$(PublishDir)en-us\*.mui;$(PublishDir)zh-cn\*.mui" />
+      <RemovingPublishFolders Include="@(RemovingPublishFiles->'%(RootDir)%(Directory)')" />
+    </ItemGroup>
+    <RemoveDir Directories="@(RemovingPublishFolders)" />
   </Target>
 
 </Project>
