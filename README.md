@@ -9,6 +9,8 @@
 
 A Windows installation image downloader built with **WinUI 3** and **.NET 10**. It fetches product catalogs from the **Microsoft Update Catalog**, filters ESD files, downloads them with multi-threaded resumable support, verifies SHA-256 checksums, persists tasks via SQLite, and optionally converts downloaded ESD files to bootable ISO images.
 
+> 💡 **Note:** This project is a **playground** — large portions of its codebase have been generated and iterated with the help of **AI coding agents**. Expect experimental patterns, occasional over-engineering, and liberal use of agent-generated code. Contributions and cleanups are welcome!
+
 ---
 
 ## ✨ Features

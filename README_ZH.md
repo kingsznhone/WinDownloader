@@ -9,6 +9,8 @@
 
 一个基于 **WinUI 3** 和 **.NET 10** 的 Windows 安装映像下载工具。从 **Microsoft Update Catalog** 获取产品目录、筛选 ESD 文件、多线程断点续传下载、SHA-256 校验、SQLite 任务持久化，并支持将下载完成的 ESD 文件转换为可启动的 ISO 映像。
 
+> 💡 **提示：** 本项目是一个**试验场**，代码库中大量内容由 **AI coding Agent** 生成和迭代。代码中可能存在实验性的模式、偶尔的过度设计以及随处可见的 AI 生成代码。欢迎贡献和清理！
+
 ---
 
 ## ✨ 功能特性
@@ -19,7 +21,7 @@
 - **💾 SQLite 任务持久化** — 下载任务通过 SQLite 本地持久化，应用重启后任务不丢失，中断的下载可恢复。
 - **🔄 ESD → ISO 转换** — 下载完成后，可选择将 ESD 文件转换为可启动的 ISO 映像。转换流水线：
   - 使用 **ManagedWimLib** 提取 WIM 映像（`WinDownloader.Wim`）
-  - 复用官方 solid LZMS 压缩格式生成 `sources\install.wim`
+  - 复用官方 solid LZMS 压缩格式生成 `sources\install.wim`I
   - 使用内置的 **oscdimg** 工具创建最终 ISO（`WinDownloader.Iso`）
 - **🌐 本地化支持** — 支持 **en-US** 和 **zh-CN**，基于 MRT Core 资源系统，切换语言后重启生效。
 - **🎨 现代化 WinUI 3 界面** — 基于 Windows App SDK 2.0，包含导航视图、设置页面和实时下载进度显示。
