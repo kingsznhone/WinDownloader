@@ -61,7 +61,7 @@ jobs:
           --configuration Release
           --no-restore
           -p:Platform=x64
-          -p:PublishDir=publish/
+          -p:PublishDir=${{ github.workspace }}\publish
           -p:PublishProtocol=FileSystem
           -p:TargetFramework=net10.0-windows10.0.26100.0
           -p:RuntimeIdentifier=win-x64
@@ -77,7 +77,13 @@ jobs:
         run: |
           $archiveName = "Windownloader_$env:VERSION`_win-x64.zip"
           $archivePath = Join-Path $env:GITHUB_WORKSPACE $archiveName
-          Compress-Archive -Path "publish\*" -DestinationPath $archivePath -Force
+          $publishDir = Join-Path $env:GITHUB_WORKSPACE "publish"
+          if (-not (Test-Path -LiteralPath $publishDir)) {
+            throw "Publish output directory was not found: $publishDir"
+          }
+
+          $publishFiles = Join-Path $publishDir "*"
+          Compress-Archive -Path $publishFiles -DestinationPath $archivePath -Force
           "archive=$archiveName" >> $env:GITHUB_OUTPUT
           Write-Host "Created package: $archiveName"
 
