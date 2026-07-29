@@ -10,11 +10,10 @@ permissions:
   contents: write
 
 jobs:
-  get-version:
-    name: Extract Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
+  publish:
+    name: Publish
+    runs-on: windows-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -23,33 +22,26 @@ jobs:
 
       - name: Extract version tag
         id: version
-        shell: bash
+        shell: pwsh
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           git fetch --tags --force
-          VERSION_TAG="$RELEASE_TAG"
-          if [ -z "$VERSION_TAG" ]; then
-            VERSION_TAG=$(git tag --points-at "$GITHUB_SHA" | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$' | head -n 1 || echo "")
-          fi
+          $versionTag = $env:RELEASE_TAG
+          if ([string]::IsNullOrWhiteSpace($versionTag)) {
+            $versionTag = git tag --points-at $env:GITHUB_SHA |
+              Where-Object { $_ -match '^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$' } |
+              Select-Object -First 1
+          }
 
-          if [ -n "$VERSION_TAG" ]; then
-            echo "version=$VERSION_TAG" >> "$GITHUB_OUTPUT"
-            echo "Found version tag: $VERSION_TAG"
-          else
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            echo "version=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-            echo "No version tag found, using: ${SHORT_SHA}"
-          fi
-
-  publish:
-    needs: get-version
-    name: Publish (${{ needs.get-version.outputs.version }})
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+          if (-not [string]::IsNullOrWhiteSpace($versionTag)) {
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$versionTag"
+            Write-Host "Found version tag: $versionTag"
+          } else {
+            $shortSha = git rev-parse --short HEAD
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$shortSha"
+            Write-Host "No version tag found, using: $shortSha"
+          }
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -77,7 +69,7 @@ jobs:
         id: package
         shell: pwsh
         env:
-          VERSION: ${{ needs.get-version.outputs.version }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           $archiveName = "Windownloader_$env:VERSION`_win-x64.zip"
           $archivePath = Join-Path $env:GITHUB_WORKSPACE $archiveName
@@ -88,7 +80,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Windownloader_${{ needs.get-version.outputs.version }}_win-x64
+          name: Windownloader_${{ steps.version.outputs.version }}_win-x64
           path: ${{ steps.package.outputs.archive }}
           if-no-files-found: error
 
