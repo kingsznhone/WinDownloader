@@ -1,8 +1,8 @@
 using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WinDownloader.ViewModels;
 using WinDownloader.Views.Pages;
-using Microsoft.UI.Xaml;
 
 namespace WinDownloader;
 
@@ -43,8 +43,8 @@ public sealed partial class MainWindow : Window
         var pageType = tag switch
         {
             "SelectionPage" => typeof(SelectionPage),
-            "DownloadPage"  => typeof(DownloadPage),
-            "SettingsPage"  => typeof(SettingsPage),
+            "DownloadPage" => typeof(DownloadPage),
+            "SettingsPage" => typeof(SettingsPage),
             _ => null
         };
         if (pageType is not null && ContentFrame.CurrentSourcePageType != pageType)

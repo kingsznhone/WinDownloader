@@ -13,11 +13,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         _settings = settings;
 
-        DownloadDirectory      = settings.DownloadDirectory!;
-        DownloadChunkCount     = settings.DownloadChunkCount;
-        DownloadParallelCount  = settings.DownloadParallelCount;
+        DownloadDirectory = settings.DownloadDirectory!;
+        DownloadChunkCount = settings.DownloadChunkCount;
+        DownloadParallelCount = settings.DownloadParallelCount;
         MaxConcurrentDownloads = settings.MaxConcurrentDownloads;
-        SelectedLanguageIndex  = LanguageTagToIndex(settings.AppLanguage);
+        SelectedLanguageIndex = LanguageTagToIndex(settings.AppLanguage);
     }
 
     // ── Download directory ───────────────────────────────────────────────────
@@ -135,11 +135,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     private void Reset()
     {
         _settings.Reset();
-        DownloadDirectory      = _settings.DownloadDirectory!;
-        DownloadChunkCount     = _settings.DownloadChunkCount;
-        DownloadParallelCount  = _settings.DownloadParallelCount;
+        DownloadDirectory = _settings.DownloadDirectory!;
+        DownloadChunkCount = _settings.DownloadChunkCount;
+        DownloadParallelCount = _settings.DownloadParallelCount;
         MaxConcurrentDownloads = _settings.MaxConcurrentDownloads;
-        SelectedLanguageIndex  = LanguageTagToIndex(_settings.AppLanguage);
+        SelectedLanguageIndex = LanguageTagToIndex(_settings.AppLanguage);
         OnPropertyChanged(nameof(SelectedLanguageHint));
     }
 }

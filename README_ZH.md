@@ -25,7 +25,7 @@
 - **💾 SQLite 任务持久化** — 下载任务通过 SQLite 本地持久化，应用重启后任务不丢失，中断的下载可恢复。
 - **🔄 ESD → ISO 转换** — 下载完成后，可选择将 ESD 文件转换为可启动的 ISO 映像。转换流水线：
   - 使用 **ManagedWimLib** 提取 WIM 映像（`WinDownloader.Wim`）
-  - 复用官方 solid LZMS 压缩格式生成 `sources\install.wim`I
+  - 复用官方 solid LZMS 压缩格式生成 `sources\install.wim`
   - 使用内置的 **oscdimg** 工具创建最终 ISO（`WinDownloader.Iso`）
 - **🌐 本地化支持** — 支持 **en-US** 和 **zh-CN**，基于 MRT Core 资源系统，切换语言后重启生效。
 - **🎨 现代化 WinUI 3 界面** — 基于 Windows App SDK 2.0，包含导航视图、设置页面和实时下载进度显示。
@@ -42,21 +42,37 @@
 
 ## 🚀 快速开始
 
-### 系统要求
+### 使用环境（运行已发布版本）
 
-- **Windows 11**（build 26100+）
+运行已发布版本需要：
+
+- **Windows 11 x64**（build 26100 或更高版本）
+- 可访问网络，用于获取 Microsoft Update Catalog 产品目录和下载 ESD 文件
+- 足够的磁盘空间，用于保存 ESD 文件和生成 ISO 映像
+
+发布版本采用 Windows App SDK self-contained 部署，用户**不需要**额外安装 .NET 10 SDK 或 Visual Studio。请将完整的发布目录复制到目标计算机，然后运行 `WinDownloader.exe`。
+
+### 开发环境
+
+构建或修改本项目需要准备：
+
+- **Windows 11 x64**（build 26100 或更高版本）
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Visual Studio 2026](https://visualstudio.microsoft.com/zh-hans/)（推荐），需安装以下工作负载：
   - .NET 桌面开发
   - 通用 Windows 平台开发
   - Windows App SDK C++ 模板
+- Git，以及用于还原 NuGet 包的网络连接
 
-### 构建与运行
+### 从源码构建与运行
 
 ```powershell
 # 克隆仓库
 git clone https://github.com/your-username/WinDownloader.git
 cd WinDownloader
+
+# 还原依赖
+dotnet restore .\src\WinDownloader\WinDownloader.csproj
 
 # 构建主 WinUI 应用（仅 x64）
 dotnet build .\src\WinDownloader\WinDownloader.csproj -nologo -p:Platform=x64 -v minimal
@@ -67,7 +83,7 @@ dotnet run --project .\src\WinDownloader\WinDownloader.csproj -p:Platform=x64
 
 > **注意：** 主应用目前仅支持 **x64** 架构，构建时必须显式指定平台。
 
-### 发布
+### 发布自包含版本
 
 ```powershell
 dotnet publish .\src\WinDownloader\WinDownloader.csproj -nologo -p:Platform=x64 -p:PublishDir=.\publish -v minimal
@@ -142,6 +158,7 @@ src/
 | [docs/MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md) | MRT Core 本地化                     |
 | [docs/MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md)       | 打包与发布                          |
 | [docs/MODULE_POC.md](docs/MODULE_POC.md)                   | POC 控制台宿主                      |
+| [CHANGELOG.md](CHANGELOG.md)                               | 版本更新记录                        |
 
 ---
 

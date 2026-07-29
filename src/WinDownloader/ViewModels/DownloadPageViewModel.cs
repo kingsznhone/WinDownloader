@@ -34,7 +34,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         foreach (var task in downloadOrchestrator.Tasks)
             Items.Add(new DownloadTaskItemViewModel(task, downloadOrchestrator, isoOrchestrator, pathService));
 
-        downloadOrchestrator.TaskAdded   += OnTaskAdded;
+        downloadOrchestrator.TaskAdded += OnTaskAdded;
         downloadOrchestrator.TaskRemoved += OnTaskRemoved;
         downloadOrchestrator.TaskChanged += OnTaskChanged;
         downloadOrchestrator.ActiveTaskCountChanged += OnActiveTaskCountChanged;
@@ -106,7 +106,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
     public void Dispose()
     {
-        _downloadOrchestrator.TaskAdded   -= OnTaskAdded;
+        _downloadOrchestrator.TaskAdded -= OnTaskAdded;
         _downloadOrchestrator.TaskRemoved -= OnTaskRemoved;
         _downloadOrchestrator.TaskChanged -= OnTaskChanged;
         _downloadOrchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;

@@ -1,14 +1,14 @@
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Windows.Globalization;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.Globalization;
 using WinDownloader.Interfaces;
 using WinDownloader.Iso;
+using WinDownloader.Iso.Interfaces;
 using WinDownloader.Services;
 using WinDownloader.ViewModels;
 using WinDownloader.Wim;
-using WinDownloader.Iso.Interfaces;
 
 namespace WinDownloader;
 

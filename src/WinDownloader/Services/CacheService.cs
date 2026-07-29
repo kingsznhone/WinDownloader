@@ -140,11 +140,11 @@ public sealed class CacheService : ICacheService
             WHERE Sha256 = @sha256;
             """;
 
-        cmd.Parameters.AddWithValue("@sha256",          task.Sha256);
-        cmd.Parameters.AddWithValue("@state",           (int)task.State);
+        cmd.Parameters.AddWithValue("@sha256", task.Sha256);
+        cmd.Parameters.AddWithValue("@state", (int)task.State);
         cmd.Parameters.AddWithValue("@downloadedBytes", task.DownloadedBytes);
-        cmd.Parameters.AddWithValue("@errorMessage",    task.ErrorMessage ?? (object)DBNull.Value);
-        cmd.Parameters.AddWithValue("@updatedAt",       task.UpdatedAt.ToString("O"));
+        cmd.Parameters.AddWithValue("@errorMessage", task.ErrorMessage ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@updatedAt", task.UpdatedAt.ToString("O"));
 
         await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -204,13 +204,13 @@ public sealed class CacheService : ICacheService
     /// <summary>Binds all INSERT parameters (identity + mutable fields).</summary>
     private static void BindAllParameters(SqliteCommand cmd, DownloadTask task)
     {
-        cmd.Parameters.AddWithValue("@sha256",          task.Sha256);
-        cmd.Parameters.AddWithValue("@rawFileGroup",    JsonSerializer.Serialize(task.FileGroup));
-        cmd.Parameters.AddWithValue("@state",           (int)task.State);
+        cmd.Parameters.AddWithValue("@sha256", task.Sha256);
+        cmd.Parameters.AddWithValue("@rawFileGroup", JsonSerializer.Serialize(task.FileGroup));
+        cmd.Parameters.AddWithValue("@state", (int)task.State);
         cmd.Parameters.AddWithValue("@downloadedBytes", task.DownloadedBytes);
-        cmd.Parameters.AddWithValue("@errorMessage",    task.ErrorMessage ?? (object)DBNull.Value);
-        cmd.Parameters.AddWithValue("@createdAt",       task.CreatedAt.ToString("O"));
-        cmd.Parameters.AddWithValue("@updatedAt",       task.UpdatedAt.ToString("O"));
+        cmd.Parameters.AddWithValue("@errorMessage", task.ErrorMessage ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@createdAt", task.CreatedAt.ToString("O"));
+        cmd.Parameters.AddWithValue("@updatedAt", task.UpdatedAt.ToString("O"));
     }
 
     /// <summary>Maps a reader row to a <see cref="DownloadTask"/>.</summary>
@@ -224,20 +224,20 @@ public sealed class CacheService : ICacheService
 
         return new DownloadTask
         {
-            FileGroup       = fileGroup,
-            State           = state,
+            FileGroup = fileGroup,
+            State = state,
             DownloadedBytes = downloadedBytes,
-            Progress        = state == TaskState.Completed
+            Progress = state == TaskState.Completed
                 ? 1.0
                 : fileGroup.File.Size > 0 ? Math.Clamp((double)downloadedBytes / fileGroup.File.Size, 0, 1) : 0,
-            ErrorMessage    = reader.IsDBNull(reader.GetOrdinal("ErrorMessage"))
+            ErrorMessage = reader.IsDBNull(reader.GetOrdinal("ErrorMessage"))
                                   ? null
                                   : reader.GetString(reader.GetOrdinal("ErrorMessage")),
-            CreatedAt       = DateTimeOffset.Parse(
+            CreatedAt = DateTimeOffset.Parse(
                                   reader.GetString(reader.GetOrdinal("CreatedAt")),
                                   null,
                                   DateTimeStyles.RoundtripKind),
-            UpdatedAt       = DateTimeOffset.Parse(
+            UpdatedAt = DateTimeOffset.Parse(
                                   reader.GetString(reader.GetOrdinal("UpdatedAt")),
                                   null,
                                   DateTimeStyles.RoundtripKind),

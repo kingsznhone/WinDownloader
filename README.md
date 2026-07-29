@@ -48,21 +48,37 @@ A Windows installation image downloader built with **WinUI 3** and **.NET 10**. 
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### Runtime Environment (Using a Published Build)
 
-- **Windows 11** (build 26100+)
+For users running a published build, the requirements are:
+
+- **Windows 11 x64** (build 26100 or later)
+- An internet connection to retrieve the Microsoft Update Catalog and download ESD files
+- Sufficient free disk space for the downloaded ESD files and generated ISO images
+
+The published application uses Windows App SDK self-contained deployment. End users do **not** need to install the .NET 10 SDK or Visual Studio. Copy the complete publish directory to the target machine and start `WinDownloader.exe`.
+
+### Development Environment
+
+Set up the following environment to build or modify the project:
+
+- **Windows 11 x64** (build 26100 or later)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [Visual Studio 2026](https://visualstudio.microsoft.com/) (recommended) with the following workloads:
+- [Visual Studio 2026](https://visualstudio.microsoft.com/) (recommended), with:
   - .NET Desktop Development
   - Universal Windows Platform development
   - Windows App SDK C++ templates
+- Git and an internet connection for restoring NuGet packages
 
-### Build & Run
+### Build & Run from Source
 
 ```powershell
 # Clone the repository
 git clone https://github.com/your-username/WinDownloader.git
 cd WinDownloader
+
+# Restore dependencies
+dotnet restore .\src\WinDownloader\WinDownloader.csproj
 
 # Build the main WinUI application (x64 only)
 dotnet build .\src\WinDownloader\WinDownloader.csproj -nologo -p:Platform=x64 -v minimal
@@ -73,7 +89,7 @@ dotnet run --project .\src\WinDownloader\WinDownloader.csproj -p:Platform=x64
 
 > **Note:** The main application currently targets **x64** only. The platform must be explicitly specified when building.
 
-### Publish
+### Publish a Self-Contained Build
 
 ```powershell
 dotnet publish .\src\WinDownloader\WinDownloader.csproj -nologo -p:Platform=x64 -p:PublishDir=.\publish -v minimal
@@ -148,6 +164,7 @@ Selection Page
 | [docs/MODULE_LOCALIZATION.md](docs/MODULE_LOCALIZATION.md) | Localization with MRT Core                        |
 | [docs/MODULE_PACKAGING.md](docs/MODULE_PACKAGING.md)       | Packaging and publishing                          |
 | [docs/MODULE_POC.md](docs/MODULE_POC.md)                   | POC console host                                  |
+| [CHANGELOG.md](CHANGELOG.md)                               | Release history                                   |
 
 ---
 

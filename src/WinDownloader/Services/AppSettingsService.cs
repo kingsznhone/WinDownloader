@@ -125,8 +125,8 @@ public sealed class AppSettingsService : IAppSettings
                 _store.SetValue(key, value);
         }
 
-        SetIfMissing(Keys.DownloadChunkCount,     Defaults.DownloadChunkCount);
-        SetIfMissing(Keys.DownloadParallelCount,  Defaults.DownloadParallelCount);
+        SetIfMissing(Keys.DownloadChunkCount, Defaults.DownloadChunkCount);
+        SetIfMissing(Keys.DownloadParallelCount, Defaults.DownloadParallelCount);
         SetIfMissing(Keys.MaxConcurrentDownloads, Defaults.MaxConcurrentDownloads);
         // DownloadDirectory and AppLanguage intentionally omitted (null default)
     }

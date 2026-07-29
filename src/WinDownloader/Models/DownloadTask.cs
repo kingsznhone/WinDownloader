@@ -47,6 +47,6 @@ public sealed class DownloadTask
     public static DownloadTask FromRawFileGroup(RawFileGroup fileGroup) => new()
     {
         FileGroup = fileGroup,
-        State     = TaskState.Queued,
+        State = TaskState.Queued,
     };
 }

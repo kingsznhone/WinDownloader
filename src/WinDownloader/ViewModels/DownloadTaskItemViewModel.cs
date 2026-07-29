@@ -151,10 +151,10 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     // ── State flags ───────────────────────────────────────────────────────────
 
     public bool IsDownloading => _state == TaskState.Downloading;
-    public bool IsVerifying   => _state == TaskState.Verifying;
-    public bool IsQueued      => _state == TaskState.Queued;
-    public bool IsCompleted   => _state == TaskState.Completed;
-    public bool IsFailed      => _state == TaskState.Failed;
+    public bool IsVerifying => _state == TaskState.Verifying;
+    public bool IsQueued => _state == TaskState.Queued;
+    public bool IsCompleted => _state == TaskState.Completed;
+    public bool IsFailed => _state == TaskState.Failed;
     public bool IsIsoConversionBusy => _isoSnapshot?.State is EsdToIsoTaskState.NotStarted or EsdToIsoTaskState.Running;
 
     /// <summary>True while the task has not yet reached a terminal state.</summary>
@@ -429,18 +429,18 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
         var stageText = snapshot.State switch
         {
             EsdToIsoTaskState.NotStarted => StringRes.Get("IsoState_NotStarted"),
-            EsdToIsoTaskState.Completed  => StringRes.Get("IsoState_Completed"),
-            EsdToIsoTaskState.Failed     => StringRes.Get("IsoState_Failed"),
-            EsdToIsoTaskState.Canceled   => StringRes.Get("IsoState_Canceled"),
+            EsdToIsoTaskState.Completed => StringRes.Get("IsoState_Completed"),
+            EsdToIsoTaskState.Failed => StringRes.Get("IsoState_Failed"),
+            EsdToIsoTaskState.Canceled => StringRes.Get("IsoState_Canceled"),
             _ => snapshot.Stage switch
             {
-                EsdToIsoStage.Preparing           => StringRes.Get("IsoStage_Preparing"),
-                EsdToIsoStage.InspectingSource    => StringRes.Get("IsoStage_InspectingSource"),
-                EsdToIsoStage.ApplyingSetupMedia  => StringRes.Get("IsoStage_ApplyingSetupMedia"),
-                EsdToIsoStage.BuildingBootWim     => StringRes.Get("IsoStage_BuildingBootWim"),
+                EsdToIsoStage.Preparing => StringRes.Get("IsoStage_Preparing"),
+                EsdToIsoStage.InspectingSource => StringRes.Get("IsoStage_InspectingSource"),
+                EsdToIsoStage.ApplyingSetupMedia => StringRes.Get("IsoStage_ApplyingSetupMedia"),
+                EsdToIsoStage.BuildingBootWim => StringRes.Get("IsoStage_BuildingBootWim"),
                 EsdToIsoStage.BuildingInstallImage => StringRes.Get("IsoStage_BuildingInstallImage"),
-                EsdToIsoStage.CreatingIso         => StringRes.Get("IsoStage_CreatingIso"),
-                _                                 => StringRes.Get("IsoStage_Default")
+                EsdToIsoStage.CreatingIso => StringRes.Get("IsoStage_CreatingIso"),
+                _ => StringRes.Get("IsoStage_Default")
             }
         };
 
@@ -466,13 +466,13 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
                 : string.Format(StringRes.Get("IsoSub_OutputFileFormat"), Path.GetFileName(snapshot.IsoPath)),
             _ => snapshot.Stage switch
             {
-                EsdToIsoStage.Preparing           => StringRes.Get("IsoSub_Stage_Preparing"),
-                EsdToIsoStage.InspectingSource    => StringRes.Get("IsoSub_Stage_InspectingSource"),
-                EsdToIsoStage.ApplyingSetupMedia  => StringRes.Get("IsoSub_Stage_ApplyingSetupMedia"),
-                EsdToIsoStage.BuildingBootWim     => StringRes.Get("IsoSub_Stage_BuildingBootWim"),
+                EsdToIsoStage.Preparing => StringRes.Get("IsoSub_Stage_Preparing"),
+                EsdToIsoStage.InspectingSource => StringRes.Get("IsoSub_Stage_InspectingSource"),
+                EsdToIsoStage.ApplyingSetupMedia => StringRes.Get("IsoSub_Stage_ApplyingSetupMedia"),
+                EsdToIsoStage.BuildingBootWim => StringRes.Get("IsoSub_Stage_BuildingBootWim"),
                 EsdToIsoStage.BuildingInstallImage => StringRes.Get("IsoSub_Stage_BuildingInstallImage"),
-                EsdToIsoStage.CreatingIso         => StringRes.Get("IsoSub_Stage_CreatingIso"),
-                _                                 => string.Empty
+                EsdToIsoStage.CreatingIso => StringRes.Get("IsoSub_Stage_CreatingIso"),
+                _ => string.Empty
             }
         };
     }
@@ -487,11 +487,11 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
         return progress.Stage switch
         {
             WimOperationStage.Extracting => $"{StringRes.Get("WimStage_Extracting")}{percentText}{itemText}",
-            WimOperationStage.Writing    => $"{StringRes.Get("WimStage_Writing")}{percentText}{itemText}",
-            WimOperationStage.Verifying  => $"{StringRes.Get("WimStage_Verifying")}{percentText}{itemText}",
-            WimOperationStage.Metadata   => $"{StringRes.Get("WimStage_Metadata")}{itemText}",
-            WimOperationStage.Completed  => $"{StringRes.Get("WimStage_Completed")}{itemText}",
-            _                            => $"{StringRes.Get("WimStage_Default")}{percentText}{itemText}"
+            WimOperationStage.Writing => $"{StringRes.Get("WimStage_Writing")}{percentText}{itemText}",
+            WimOperationStage.Verifying => $"{StringRes.Get("WimStage_Verifying")}{percentText}{itemText}",
+            WimOperationStage.Metadata => $"{StringRes.Get("WimStage_Metadata")}{itemText}",
+            WimOperationStage.Completed => $"{StringRes.Get("WimStage_Completed")}{itemText}",
+            _ => $"{StringRes.Get("WimStage_Default")}{percentText}{itemText}"
         };
     }
 

@@ -51,11 +51,11 @@ public sealed partial class TagControl : UserControl
         var stateName = type switch
         {
             TagType.Primary => "PrimaryState",
-            TagType.Success  => "SuccessState",
-            TagType.Warning  => "WarningState",
-            TagType.Danger   => "DangerState",
-            TagType.Info     => "InfoState",
-            _                => "DefaultState",
+            TagType.Success => "SuccessState",
+            TagType.Warning => "WarningState",
+            TagType.Danger => "DangerState",
+            TagType.Info => "InfoState",
+            _ => "DefaultState",
         };
 
         VisualStateManager.GoToState(this, stateName, useTransitions: false);

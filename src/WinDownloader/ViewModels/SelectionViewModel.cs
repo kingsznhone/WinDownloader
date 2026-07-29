@@ -225,7 +225,7 @@ public sealed partial class SelectionViewModel : ObservableObject
                     SelectedArchitecture);
             }
 
-            }
+        }
         finally
         {
             _isUpdatingFilters = false;

@@ -22,12 +22,12 @@ public sealed record RawFile(
 
     public string EditionGroupText => EditionLoc switch
     {
-        "%CLIENT%"       => StringRes.Get("EditionGroup_Client"),
-        "%ENTERPRISE%"   => StringRes.Get("EditionGroup_Enterprise"),
+        "%CLIENT%" => StringRes.Get("EditionGroup_Client"),
+        "%ENTERPRISE%" => StringRes.Get("EditionGroup_Enterprise"),
         "%ENTERPRISE_N%" => StringRes.Get("EditionGroup_EnterpriseN"),
-        "%BASE_CHINA%"   => StringRes.Get("EditionGroup_China"),
-        ""               => StringRes.Get("EditionGroup_Ungrouped"),
-        _                => EditionLoc
+        "%BASE_CHINA%" => StringRes.Get("EditionGroup_China"),
+        "" => StringRes.Get("EditionGroup_Ungrouped"),
+        _ => EditionLoc
     };
     public TagType EditionGroupTagType => EditionLoc switch
     {
@@ -49,9 +49,9 @@ public sealed record RawFile(
 
     public TagType ArchTagType => Architecture.ToLowerInvariant() switch
     {
-        "x64"   => TagType.Success,
+        "x64" => TagType.Success,
         "arm64" => TagType.Danger,
-        _       => TagType.Default,
+        _ => TagType.Default,
     };
 
     public string Sha256Short => Sha256.Length > 24 ? $"{Sha256[..24]}..." : Sha256;

@@ -424,18 +424,18 @@ public sealed class DownloadTaskOrchestratorService : IDownloadTaskOrchestratorS
     private static string FormatBytes(long bytes) => bytes switch
     {
         >= 1024 * 1024 => $"{bytes / 1024.0 / 1024.0:F1} MB",
-        >= 1024        => $"{bytes / 1024.0:F1} KB",
-        _              => $"{bytes} B",
+        >= 1024 => $"{bytes / 1024.0:F1} KB",
+        _ => $"{bytes} B",
     };
 
     private static string BuildDuplicateTaskMessage(DownloadTask task) => task.State switch
     {
-        TaskState.Queued      => "The file is already queued for download.",
+        TaskState.Queued => "The file is already queued for download.",
         TaskState.Downloading => "The file is currently downloading.",
-        TaskState.Verifying   => "The file has been downloaded and is being verified.",
-        TaskState.Completed   => "The file has been downloaded. Please open the directory in the download tasks page.",
-        TaskState.Failed      => "A failed task for this file already exists. Please remove it from the download tasks page before adding it again.",
-        _                     => "The download task already exists.",
+        TaskState.Verifying => "The file has been downloaded and is being verified.",
+        TaskState.Completed => "The file has been downloaded. Please open the directory in the download tasks page.",
+        TaskState.Failed => "A failed task for this file already exists. Please remove it from the download tasks page before adding it again.",
+        _ => "The download task already exists.",
     };
 
     private async Task<bool> WaitForDownloadSlotAsync(DownloadTask task, CancellationToken shutdownToken)

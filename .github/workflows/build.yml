@@ -2,9 +2,49 @@ name: Build Check
 
 on:
   workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  get-version:
+    name: Extract Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version tag
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git fetch --tags --force
+          VERSION_TAG="$RELEASE_TAG"
+          if [ -z "$VERSION_TAG" ]; then
+            VERSION_TAG=$(git tag --points-at "$GITHUB_SHA" | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$' | head -n 1 || echo "")
+          fi
+
+          if [ -n "$VERSION_TAG" ]; then
+            echo "version=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+            echo "Found version tag: $VERSION_TAG"
+          else
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "version=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+            echo "No version tag found, using: ${SHORT_SHA}"
+          fi
+
+  publish:
+    needs: get-version
+    name: Publish (${{ needs.get-version.outputs.version }})
     runs-on: windows-latest
 
     steps:
@@ -19,9 +59,42 @@ jobs:
       - name: Restore
         run: dotnet restore src/WinDownloader.slnx
 
-      - name: Build
+      - name: Publish
         run: >
-          dotnet build src/WinDownloader.slnx
+          dotnet publish src/WinDownloader/WinDownloader.csproj
           --configuration Release
           --no-restore
           -p:Platform=x64
+          -p:PublishDir=publish/
+          -p:PublishProtocol=FileSystem
+          -p:TargetFramework=net10.0-windows10.0.26100.0
+          -p:RuntimeIdentifier=win-x64
+          -p:SelfContained=false
+          -p:PublishSingleFile=true
+          -p:PublishReadyToRun=true
+
+      - name: Package publish output
+        id: package
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
+        run: |
+          $archiveName = "Windownloader_$env:VERSION`_win-x64.zip"
+          $archivePath = Join-Path $env:GITHUB_WORKSPACE $archiveName
+          Compress-Archive -Path "publish\*" -DestinationPath $archivePath -Force
+          "archive=$archiveName" >> $env:GITHUB_OUTPUT
+          Write-Host "Created package: $archiveName"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windownloader_${{ needs.get-version.outputs.version }}_win-x64
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+      - name: Append package to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.archive }}
+          token: ${{ secrets.GITHUB_TOKEN }}
