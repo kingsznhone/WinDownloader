@@ -49,7 +49,11 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore src/WinDownloader.slnx
+        run: >
+          dotnet restore src/WinDownloader.slnx
+          --runtime win-x64
+          -p:PublishReadyToRun=true
+          -p:SelfContained=false
 
       - name: Publish
         run: >
