@@ -68,9 +68,11 @@
             FontFamily="Consolas"
             FontSize="12"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-            Text="{Binding HashText, ElementName=Root}"
             TextTrimming="CharacterEllipsis"
-            Visibility="{Binding HashTextVisibility, ElementName=Root}" />
+            Visibility="{Binding HashTextVisibility, ElementName=Root}">
+            <Run x:Uid="RawFileGroupSummary_HashPrefix" />
+            <Run Text="{Binding HashText, ElementName=Root}" />
+        </TextBlock>
 
         <ItemsControl
             Grid.Row="3"

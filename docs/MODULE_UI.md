@@ -51,7 +51,7 @@ MainWindow
 | `ReloadCommand` | 强制刷新目录 |
 | `EnqueueDownloadCommand` | 调用 `DownloadTaskOrchestratorService.EnqueueAsync` |
 
-目录条目和下载任务复用 `RawFileGroupSummaryControl` 展示文件名、SHA-256 和版本组；操作和进度由各自 item 控件负责。
+目录条目和下载任务复用 `RawFileGroupSummaryControl` 展示文件名、SHA-256 和版本组；哈希行显示 `SHA256: ` 前缀，哈希为空时整行隐藏。操作和进度由各自 item 控件负责。
 
 ## DownloadPageViewModel
 

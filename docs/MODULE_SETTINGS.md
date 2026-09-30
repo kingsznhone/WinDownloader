@@ -57,6 +57,7 @@
 
 ## 注意事项
 
+- `SettingsViewModel` 的 `[ObservableProperty]` 回调使用 `partial void On…Changed(...)`，不显式添加 `private` 等可访问性修饰符，以匹配源生成器声明并避免 `CS8799`。
 - `MaxConcurrentDownloads` 会影响后续准备启动的下载任务；运行时调低不会中断已运行下载。
 - `DownloadDirectory` 为空时服务层应回退到默认下载目录。
 - `AppLanguage` 仅接受 `en-US` 和 `zh-CN`；其他旧值或无效值会按“跟随系统”处理。

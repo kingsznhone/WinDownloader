@@ -45,6 +45,9 @@
   <data name="Selection_RetryButton.Content" xml:space="preserve">
     <value>重试</value>
   </data>
+  <data name="RawFileGroupSummary_HashPrefix.Text" xml:space="preserve">
+    <value>SHA256: </value>
+  </data>
   <data name="Download_Title.Text" xml:space="preserve">
     <value>下载任务</value>
   </data>
