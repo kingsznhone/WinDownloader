@@ -224,13 +224,11 @@
                     <Button Command="{Binding OpenDirectoryCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon FontSize="12" Glyph="&#xE838;" />
-                            <TextBlock x:Uid="DownloadTask_OpenDirectory"/>
+                            <TextBlock x:Uid="DownloadTask_OpenDirectory" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
-
             </Grid>
-
         </Grid>
     </Border>
 </UserControl>

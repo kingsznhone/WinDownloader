@@ -81,7 +81,9 @@ public sealed class CacheService : ICacheService
             await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
             if (!await HasRequiredColumnsAsync(conn, cancellationToken).ConfigureAwait(false))
+            {
                 throw new SqliteException("Schema is missing required columns.", 1);
+            }
         }
         catch (SqliteException) when (!retried)
         {
@@ -99,7 +101,9 @@ public sealed class CacheService : ICacheService
 
         var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
             existing.Add(reader.GetString(reader.GetOrdinal("name")));
+        }
 
         return _requiredColumns.IsSubsetOf(existing);
     }
@@ -159,7 +163,9 @@ public sealed class CacheService : ICacheService
         var tasks = new List<DownloadTask>();
         await using SqliteDataReader reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
             tasks.Add(MapToTask(reader));
+        }
 
         return tasks;
     }

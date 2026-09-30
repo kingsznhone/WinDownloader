@@ -22,10 +22,12 @@ public sealed class DownloadTaskOrchestratorService : IDownloadTaskOrchestratorS
 
     // ── In-memory task registry ───────────────────────────────────────────────
     private readonly ObservableCollection<DownloadTask> _tasks = [];
+
     private readonly ConcurrentDictionary<string, DownloadTask> _taskMap = new(StringComparer.OrdinalIgnoreCase);
 
     // ── Download workers ──────────────────────────────────────────────────────
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _activeCts = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly ConcurrentDictionary<string, byte> _cancelledTasks = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Task> _downloadWorkers = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _shutdownCts = new();

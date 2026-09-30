@@ -33,10 +33,12 @@ public partial class App : Application
 
     public static IServiceProvider Services => ((App)Current)._host!.Services;
     public static Window MainWindow { get; private set; } = default!;
+
     public static T GetService<T>() where T : notnull
     {
         return Services.GetRequiredService<T>();
     }
+
     private static IHost BuildHost(AppSettingsService settings)
     {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
@@ -73,6 +75,7 @@ public partial class App : Application
 
         return builder.Build();
     }
+
     // Guards against re-entrant close during async shutdown.
     private bool _isShuttingDown;
 
@@ -141,6 +144,4 @@ public partial class App : Application
             _window.Close(); // Now close for real.
         }
     }
-
-
 }

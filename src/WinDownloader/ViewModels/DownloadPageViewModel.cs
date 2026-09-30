@@ -32,7 +32,9 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
         // Populate from tasks already loaded at startup.
         foreach (DownloadTask task in downloadOrchestrator.Tasks)
+        {
             Items.Add(new DownloadTaskItemViewModel(task, downloadOrchestrator, isoOrchestrator, pathService));
+        }
 
         downloadOrchestrator.TaskAdded += OnTaskAdded;
         downloadOrchestrator.TaskRemoved += OnTaskRemoved;
@@ -50,7 +52,6 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
     // ── InfoBadge ─────────────────────────────────────────────────────────────
 
-
     /// <summary>Count of active download and ISO conversion workers.</summary>
     public int PendingTaskCount
     {
@@ -58,7 +59,9 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         private set
         {
             if (SetProperty(ref field, value))
+            {
                 OnPropertyChanged(nameof(PendingTaskBadgeVisibility));
+            }
         }
     }
 
@@ -111,6 +114,8 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         _downloadOrchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
         _isoOrchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
         foreach (DownloadTaskItemViewModel item in Items)
+        {
             item.Dispose();
+        }
     }
 }

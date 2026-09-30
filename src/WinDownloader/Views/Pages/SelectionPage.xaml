@@ -49,7 +49,7 @@
                         x:Uid="Selection_Title"
                         Grid.Row="0"
                         FontSize="28"
-                        FontWeight="SemiBold"/>
+                        FontWeight="SemiBold" />
                 <Button
                     x:Uid="Selection_ReloadButton"
                     Grid.Column="1"
@@ -62,7 +62,7 @@
                 ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <ComboBox
@@ -84,7 +84,7 @@
                     MinWidth="120"
                     HorizontalAlignment="Stretch"
                     SelectedItem="{x:Bind ViewModel.SelectedArchitecture, Mode=TwoWay}" />
-                </Grid>
+            </Grid>
 
             <InfoBar
                 x:Uid="Selection_OperationInfo"
@@ -144,7 +144,7 @@
                 TextWrapping="WrapWholeWords" />
             <Button
                 x:Uid="Selection_RetryButton"
-                Command="{x:Bind ViewModel.ReloadCommand}"/>
+                Command="{x:Bind ViewModel.ReloadCommand}" />
         </StackPanel>
     </Grid>
 </Page>

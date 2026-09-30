@@ -18,7 +18,7 @@ public sealed partial class SettingsViewModel(IAppSettings settings) : Observabl
     [ObservableProperty]
     public partial string DownloadDirectory { get; set; } = settings.DownloadDirectory!;
 
-    partial void OnDownloadDirectoryChanged(string value)
+    private partial void OnDownloadDirectoryChanged(string value)
         => _settings.DownloadDirectory = string.IsNullOrWhiteSpace(value) ? null : value;
 
     [RelayCommand]
@@ -46,7 +46,7 @@ public sealed partial class SettingsViewModel(IAppSettings settings) : Observabl
     [ObservableProperty]
     public partial int DownloadChunkCount { get; set; } = settings.DownloadChunkCount;
 
-    partial void OnDownloadChunkCountChanged(int value)
+    private partial void OnDownloadChunkCountChanged(int value)
         => _settings.DownloadChunkCount = value;
 
     // ── Download parallel count (1–16) ──────────────────────────────────────
@@ -54,7 +54,7 @@ public sealed partial class SettingsViewModel(IAppSettings settings) : Observabl
     [ObservableProperty]
     public partial int DownloadParallelCount { get; set; } = settings.DownloadParallelCount;
 
-    partial void OnDownloadParallelCountChanged(int value)
+    private partial void OnDownloadParallelCountChanged(int value)
         => _settings.DownloadParallelCount = value;
 
     // ── Max concurrent downloads (1–16) ─────────────────────────────────────
@@ -62,7 +62,7 @@ public sealed partial class SettingsViewModel(IAppSettings settings) : Observabl
     [ObservableProperty]
     public partial int MaxConcurrentDownloads { get; set; } = settings.MaxConcurrentDownloads;
 
-    partial void OnMaxConcurrentDownloadsChanged(int value)
+    private partial void OnMaxConcurrentDownloadsChanged(int value)
         => _settings.MaxConcurrentDownloads = value;
 
     // ── Language ─────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ public sealed partial class SettingsViewModel(IAppSettings settings) : Observabl
     [ObservableProperty]
     public partial bool IsRestartRequired { get; set; }
 
-    partial void OnSelectedLanguageIndexChanged(int value)
+    private partial void OnSelectedLanguageIndexChanged(int value)
     {
         var tag = (value >= 0 && value < _languageTags.Length) ? _languageTags[value] : null;
         _settings.AppLanguage = tag;

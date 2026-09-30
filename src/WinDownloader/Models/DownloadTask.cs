@@ -12,7 +12,7 @@ public sealed class DownloadTask
     // ── Identity / catalog payload ──────────────────────────────────────────
 
     /// <summary>Original catalog file group this task downloads.</summary>
-    public required RawFileGroup FileGroup { get; init; }
+    public RawFileGroup FileGroup { get; init; }
 
     /// <summary>SHA-256 hash of the ESD file. Primary key — matches RawFile.Sha256.</summary>
     public string Sha256 => FileGroup.File.Sha256;

@@ -1,5 +1,3 @@
-using WinDownloader.Models;
-
 namespace WinDownloader.Interfaces;
 
 /// <summary>

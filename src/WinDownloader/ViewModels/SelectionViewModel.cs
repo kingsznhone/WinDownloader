@@ -215,7 +215,6 @@ public sealed partial class SelectionViewModel : ObservableObject
                     BuildArchitectureOptions(),
                     SelectedArchitecture);
             }
-
         }
         finally
         {

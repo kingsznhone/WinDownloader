@@ -18,7 +18,7 @@
                 x:Uid="Settings_DownloadSection"
                 Text="下载"
                 Style="{StaticResource TitleTextBlockStyle}"
-                Margin="0,0,0,12" /> 
+                Margin="0,0,0,12" />
 
             <!-- Download Directory -->
             <ctk:SettingsCard x:Uid="Settings_DownloadDirectory" Header="下载目录" Description="ESD 文件与转换输出的保存位置">
@@ -137,7 +137,7 @@
                 Style="{StaticResource TitleTextBlockStyle}"
                 Margin="0,16,0,12" />
 
-            <ctk:SettingsCard x:Uid="Settings_ResetCard" >
+            <ctk:SettingsCard x:Uid="Settings_ResetCard">
                 <ctk:SettingsCard.HeaderIcon>
                     <FontIcon Glyph="&#xE777;" />
                 </ctk:SettingsCard.HeaderIcon>
@@ -162,7 +162,6 @@
                     Text="{x:Bind ViewModel.AppVersion, Mode=OneTime}"
                     VerticalAlignment="Center" />
             </ctk:SettingsCard>
-
         </StackPanel>
     </ScrollViewer>
 </Page>

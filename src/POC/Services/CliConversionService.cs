@@ -1,6 +1,5 @@
 using ManagedWimLib;
 using POC.Models;
-using WinDownloader.Iso;
 using WinDownloader.Iso.Interfaces;
 using WinDownloader.Iso.Models;
 using WinDownloader.Wim.Interfaces;
@@ -28,13 +27,24 @@ public sealed class CliConversionService(IWimProcessingService wimService, IIsoC
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(esdPath))
+        {
             throw new ArgumentException("ESD path is required.", nameof(esdPath));
+        }
+
         if (!File.Exists(esdPath))
+        {
             throw new FileNotFoundException($"ESD not found: {esdPath}", esdPath);
+        }
+
         if (string.IsNullOrWhiteSpace(stagingDirectory))
+        {
             throw new ArgumentException("Staging directory is required.", nameof(stagingDirectory));
+        }
+
         if (!recompressInstallImage && installCompression != CompressionType.LZMS)
+        {
             throw new ArgumentException("Fast install.wim export requires LZMS compression or force recompression.", nameof(installCompression));
+        }
 
         DateTimeOffset startedAt = DateTimeOffset.Now;
         var warnings = new List<string>();
@@ -112,8 +122,10 @@ public sealed class CliConversionService(IWimProcessingService wimService, IIsoC
             warnings.AddRange(isoResult.Warnings);
 
             if (!isoResult.Succeeded)
+            {
                 return new CliConversionResult(false, stagingDirectory, bootWimPath, installWimPath, isoPath,
                     DateTimeOffset.Now - startedAt, isoResult.ErrorMessage ?? "ISO creation failed.", warnings);
+            }
 
             Report(progress, 1.0, "Completed", "ESD 到 ISO 转换完成");
             return new CliConversionResult(true, stagingDirectory, bootWimPath, installWimPath, isoPath,
@@ -122,7 +134,9 @@ public sealed class CliConversionService(IWimProcessingService wimService, IIsoC
         finally
         {
             if (!keepIntermediateFiles)
+            {
                 TryDeleteDirectory(stagingDirectory);
+            }
         }
     }
 
@@ -152,15 +166,28 @@ public sealed class CliConversionService(IWimProcessingService wimService, IIsoC
     private static void ValidateImages(IReadOnlyList<WimImageInfo> images)
     {
         if (images.Count < 4)
+        {
             throw new InvalidOperationException("ESD must contain at least image 1, 2, 3, and one install image.");
+        }
+
         foreach (int idx in new[] { 1, 2, 3, 4 })
+        {
             if (images.All(i => i.Index != idx))
+            {
                 throw new InvalidOperationException($"ESD is missing required image index {idx}.");
+            }
+        }
     }
 
     private static void TryDeleteDirectory(string path)
     {
-        try { if (Directory.Exists(path)) Directory.Delete(path, recursive: true); }
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
