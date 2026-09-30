@@ -62,7 +62,7 @@ public sealed partial class RawFileGroupSummaryControl : UserControl
     private static void OnHashTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (RawFileGroupSummaryControl)d;
-        var hashText = e.NewValue as string;
+        string? hashText = e.NewValue as string;
 
         control.HashTextVisibility = string.IsNullOrWhiteSpace(hashText)
             ? Visibility.Collapsed

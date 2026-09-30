@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -10,7 +13,7 @@ namespace WinDownloader.Services;
 /// Persists application settings in a JSON file (unpackaged) with
 /// <see cref="INotifyPropertyChanged"/> support for TwoWay bindings.
 /// </summary>
-public sealed class AppSettingsService : IAppSettings
+public partial class AppSettingsService : IAppSettings
 {
     private readonly JsonSettingsStore _store;
 
@@ -63,9 +66,13 @@ public sealed class AppSettingsService : IAppSettings
         {
             // Store null when the value matches the default (keeps settings file clean)
             if (value is null || value == Defaults.DownloadDirectory)
+            {
                 Remove(Keys.DownloadDirectory);
+            }
             else
+            {
                 Set(Keys.DownloadDirectory, value);
+            }
         }
     }
 
@@ -77,11 +84,15 @@ public sealed class AppSettingsService : IAppSettings
         get => Get<string?>(Keys.AppLanguage, null);
         set
         {
-            var normalized = NormalizeSupportedLanguage(value);
+            string? normalized = NormalizeSupportedLanguage(value);
             if (normalized is null)
+            {
                 Remove(Keys.AppLanguage);
+            }
             else
+            {
                 Set(Keys.AppLanguage, normalized);
+            }
         }
     }
 
@@ -90,12 +101,14 @@ public sealed class AppSettingsService : IAppSettings
     /// <inheritdoc/>
     public string ResolveEffectiveLanguage()
     {
-        var saved = AppLanguage;
-        var normalizedSaved = NormalizeSupportedLanguage(saved);
+        string? saved = AppLanguage;
+        string? normalizedSaved = NormalizeSupportedLanguage(saved);
         if (normalizedSaved is not null)
+        {
             return normalizedSaved;
+        }
 
-        var systemLang = CultureInfo.CurrentUICulture.Name;
+        string systemLang = CultureInfo.CurrentUICulture.Name;
 
         return systemLang.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-CN" : "en-US";
     }
@@ -103,13 +116,19 @@ public sealed class AppSettingsService : IAppSettings
     private static string? NormalizeSupportedLanguage(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             return null;
+        }
 
         if (string.Equals(value, "en-US", StringComparison.OrdinalIgnoreCase))
+        {
             return "en-US";
+        }
 
         if (string.Equals(value, "zh-CN", StringComparison.OrdinalIgnoreCase))
+        {
             return "zh-CN";
+        }
 
         return null;
     }
@@ -122,7 +141,9 @@ public sealed class AppSettingsService : IAppSettings
         void SetIfMissing(string key, object value)
         {
             if (!_store.TryGetValue(key, out _))
+            {
                 _store.SetValue(key, value);
+            }
         }
 
         SetIfMissing(Keys.DownloadChunkCount, Defaults.DownloadChunkCount);
@@ -145,15 +166,21 @@ public sealed class AppSettingsService : IAppSettings
 
     private T Get<T>(string key, T defaultValue)
     {
-        if (_store.TryGetValue(key, out var raw) && TryCoerce(raw, out T typed))
+        if (_store.TryGetValue(key, out object? raw) && TryCoerce(raw, out T typed))
+        {
             return typed;
+        }
+
         return defaultValue;
     }
 
     private void Set(string key, object value)
     {
-        if (_store.TryGetValue(key, out var existing) && ValuesEqual(existing, value))
+        if (_store.TryGetValue(key, out object? existing) && ValuesEqual(existing, value))
+        {
             return;
+        }
+
         _store.SetValue(key, value);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(key));
     }
@@ -161,15 +188,19 @@ public sealed class AppSettingsService : IAppSettings
     private void Remove(string key)
     {
         if (_store.Remove(key))
+        {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(key));
+        }
     }
 
     private static bool ValuesEqual(object? existing, object value)
     {
         if (existing?.Equals(value) == true)
+        {
             return true;
+        }
 
-        return TryConvert(existing, value.GetType(), out var converted) && converted?.Equals(value) == true;
+        return TryConvert(existing, value.GetType(), out object? converted) && converted?.Equals(value) == true;
     }
 
     private static bool TryCoerce<T>(object? raw, out T value)
@@ -180,7 +211,7 @@ public sealed class AppSettingsService : IAppSettings
             return true;
         }
 
-        if (TryConvert(raw, typeof(T), out var converted))
+        if (TryConvert(raw, typeof(T), out object? converted))
         {
             if (converted is T convertedTyped)
             {
@@ -202,10 +233,12 @@ public sealed class AppSettingsService : IAppSettings
     private static bool TryConvert(object? raw, Type targetType, out object? value)
     {
         value = null;
-        var conversionType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        Type conversionType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
         if (raw is null)
+        {
             return !conversionType.IsValueType;
+        }
 
         try
         {
@@ -246,12 +279,12 @@ public sealed class AppSettingsService : IAppSettings
 
         public static JsonSettingsStore Create()
         {
-            var directory = Path.Combine(
+            string directory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "WindowsImageDownloader");
             Directory.CreateDirectory(directory);
 
-            var filePath = Path.Combine(directory, "settings.json");
+            string filePath = Path.Combine(directory, "settings.json");
             return new JsonSettingsStore(filePath, Load(filePath));
         }
 
@@ -265,23 +298,36 @@ public sealed class AppSettingsService : IAppSettings
 
         public bool Remove(string key)
         {
-            if (!_values.Remove(key)) return false;
+            if (!_values.Remove(key))
+            {
+                return false;
+            }
+
             Save();
             return true;
         }
 
         private static Dictionary<string, object?> Load(string filePath)
         {
-            if (!File.Exists(filePath)) return [];
+            if (!File.Exists(filePath))
+            {
+                return [];
+            }
 
             try
             {
-                var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(filePath));
-                if (raw is null) return [];
+                Dictionary<string, JsonElement>? raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(filePath));
+                if (raw is null)
+                {
+                    return [];
+                }
 
                 var values = new Dictionary<string, object?>(StringComparer.Ordinal);
-                foreach (var item in raw)
+                foreach (KeyValuePair<string, JsonElement> item in raw)
+                {
                     values[item.Key] = ReadJsonValue(item.Value);
+                }
+
                 return values;
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
@@ -308,8 +354,8 @@ public sealed class AppSettingsService : IAppSettings
             JsonValueKind.String => value.GetString(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
-            JsonValueKind.Number when value.TryGetInt32(out var intValue) => intValue,
-            JsonValueKind.Number when value.TryGetUInt32(out var uintValue) => uintValue,
+            JsonValueKind.Number when value.TryGetInt32(out int intValue) => intValue,
+            JsonValueKind.Number when value.TryGetUInt32(out uint uintValue) => uintValue,
             JsonValueKind.Number => value.GetDouble(),
             JsonValueKind.Null => null,
             _ => value.GetRawText(),
@@ -331,8 +377,8 @@ public sealed class AppSettingsService : IAppSettings
 
     internal static class Defaults
     {
-        public const int DownloadChunkCount = 32;
-        public const int DownloadParallelCount = 4;
+        public const int DownloadChunkCount = 64;
+        public const int DownloadParallelCount = 8;
         public const int MaxConcurrentDownloads = 1;
         public const string? AppLanguage = null; // null = follow system
 

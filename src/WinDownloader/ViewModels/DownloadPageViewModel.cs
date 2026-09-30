@@ -31,7 +31,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         // Populate from tasks already loaded at startup.
-        foreach (var task in downloadOrchestrator.Tasks)
+        foreach (DownloadTask task in downloadOrchestrator.Tasks)
             Items.Add(new DownloadTaskItemViewModel(task, downloadOrchestrator, isoOrchestrator, pathService));
 
         downloadOrchestrator.TaskAdded += OnTaskAdded;
@@ -50,15 +50,14 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
 
     // ── InfoBadge ─────────────────────────────────────────────────────────────
 
-    private int _pendingTaskCount;
 
     /// <summary>Count of active download and ISO conversion workers.</summary>
     public int PendingTaskCount
     {
-        get => _pendingTaskCount;
+        get;
         private set
         {
-            if (SetProperty(ref _pendingTaskCount, value))
+            if (SetProperty(ref field, value))
                 OnPropertyChanged(nameof(PendingTaskBadgeVisibility));
         }
     }
@@ -77,7 +76,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
     private void OnTaskRemoved(object? sender, DownloadTask task) =>
         _dispatcherQueue.TryEnqueue(() =>
         {
-            var vm = Items.FirstOrDefault(x => x.Task.Sha256 == task.Sha256);
+            DownloadTaskItemViewModel? vm = Items.FirstOrDefault(x => x.Task.Sha256 == task.Sha256);
             if (vm is not null)
             {
                 Items.Remove(vm);
@@ -111,7 +110,7 @@ public sealed partial class DownloadPageViewModel : ObservableObject, IDisposabl
         _downloadOrchestrator.TaskChanged -= OnTaskChanged;
         _downloadOrchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
         _isoOrchestrator.ActiveTaskCountChanged -= OnActiveTaskCountChanged;
-        foreach (var item in Items)
+        foreach (DownloadTaskItemViewModel item in Items)
             item.Dispose();
     }
 }

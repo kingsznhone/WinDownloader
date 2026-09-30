@@ -37,6 +37,8 @@ MainWindow
 
 `SelectionPage` 是默认页。
 
+主窗口以 `1080 × 720` 为首选最小尺寸，首开尺寸按当前窗口 DPI 缩放。
+
 ## SelectionViewModel
 
 职责：加载产品目录、维护语言/架构筛选器、按 ESD 文件分组展示，并将用户选择转为 `DownloadTask`。
@@ -49,25 +51,11 @@ MainWindow
 | `ReloadCommand` | 强制刷新目录 |
 | `EnqueueDownloadCommand` | 调用 `DownloadTaskOrchestratorService.EnqueueAsync` |
 
-入队时调用：
-
-```csharp
-DownloadTask.FromRawFileGroup(group)
-```
-
-`RawFileItemControl` 和 `DownloadTaskItemControl` 的顶部摘要都复用 `RawFileGroupSummaryControl`。公共控件绑定 `RawFileGroup`，摘要区显示文件名和 SHA-256；按钮、进度、ISO 转换和错误消息仍保留在各自 item 控件中。
+目录条目和下载任务复用 `RawFileGroupSummaryControl` 展示文件名、SHA-256 和版本组；操作和进度由各自 item 控件负责。
 
 ## DownloadPageViewModel
 
 职责：维护下载任务列表和导航徽标计数。
-
-依赖：
-
-- `IDownloadTaskOrchestratorService`
-- `IEsdToIsoOrchestratorService`
-- `IDownloadTaskPathService`
-
-它订阅：
 
 | 事件 | 行为 |
 |------|------|
@@ -82,6 +70,8 @@ DownloadTask.FromRawFileGroup(group)
 ## DownloadTaskItemViewModel
 
 职责：把 `DownloadTaskSnapshot` 和 `IsoConversionTaskSnapshot` 转成 XAML 绑定属性，并暴露任务操作命令。下载快照和 ISO 转换快照分别合并到 ViewModel，再通过 `DispatcherQueue.TryEnqueue` 应用到 UI 线程。
+
+两类快照独立合并，避免高频进度事件重复刷新 UI；仅对变化的绑定属性发出通知。
 
 | 状态属性 | 说明 |
 |----------|------|
@@ -106,16 +96,7 @@ DownloadTask.FromRawFileGroup(group)
 | `DeleteCommand` | 删除 completed 且没有 ISO 转换中的任务和 ESD 文件 |
 | `OpenDirectoryCommand` | 通过 `IDownloadTaskPathService` 打开输出目录 |
 
-`DownloadTaskItemControl.xaml` 在下载进度区之后显示 ISO 进度组：
-
-```text
-IsoMainStatusText
-IsoMainProgress
-IsoSubStatusText
-IsoSubProgress / IsIsoSubProgressIndeterminate
-```
-
-子进度优先使用 `EsdToIsoTaskSnapshot.IsoProgress.Percent` 或 `WimProgress.Percent`；当底层阶段没有百分比时使用不确定进度条。操作区包含删除、转换 ISO/打开 ISO 目录、打开 ESD 目录三个入口。
+ISO 主进度表示整体流水线，子进度优先使用 oscdimg 或 WIM 的百分比；没有百分比时显示不确定进度条。
 
 ## SettingsViewModel
 
@@ -135,7 +116,5 @@ IsoSubProgress / IsIsoSubProgressIndeterminate
 ## 注意事项
 
 - `DispatcherQueue.GetForCurrentThread()` 必须在 UI 线程调用。
-- `DownloadTaskItemViewModel` 会合并高频下载和 ISO 快照，避免每个进度事件都立即刷新 UI。
 - 页面通过 `App.GetService<T>()` 获取 ViewModel。
-- ISO 转换中不允许删除任务；`CanDelete` 会被 `IsIsoConversionBusy` 阻止。
 - 不在 UI 层拼路径；ESD、ISO、`.staging` 路径都来自 `IDownloadTaskPathService`。

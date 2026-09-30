@@ -20,7 +20,7 @@ public sealed class DownloadTaskPathService : IDownloadTaskPathService
     {
         ArgumentNullException.ThrowIfNull(task);
 
-        var root = _settings.DownloadDirectory;
+        string? root = _settings.DownloadDirectory;
         if (string.IsNullOrWhiteSpace(root))
         {
             throw new InvalidOperationException("Download directory is not set.");
@@ -33,7 +33,7 @@ public sealed class DownloadTaskPathService : IDownloadTaskPathService
     {
         ArgumentNullException.ThrowIfNull(task);
 
-        var fileBaseName = Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName);
+        string fileBaseName = Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName);
         return Path.Combine(ResolveDirectory(task), fileBaseName + ".esd");
     }
 
@@ -41,7 +41,7 @@ public sealed class DownloadTaskPathService : IDownloadTaskPathService
     {
         ArgumentNullException.ThrowIfNull(task);
 
-        var fileBaseName = Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName);
+        string fileBaseName = Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName);
         return Path.Combine(ResolveDirectory(task), fileBaseName + ".iso");
     }
 

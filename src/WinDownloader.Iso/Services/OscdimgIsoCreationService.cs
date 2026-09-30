@@ -1,7 +1,11 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using WinDownloader.Iso.Interfaces;
+using WinDownloader.Iso.Models;
 
 namespace WinDownloader.Iso;
 
@@ -11,7 +15,7 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
 
     public OscdimgIsoCreationService()
     {
-        var candidate = Path.Combine(AppContext.BaseDirectory, "oscdimg.exe");
+        string candidate = Path.Combine(AppContext.BaseDirectory, "oscdimg.exe");
         _toolPath = File.Exists(candidate)
             ? candidate
             : throw new InvalidOperationException(
@@ -24,13 +28,13 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
     {
         ArgumentNullException.ThrowIfNull(request);
         var warnings = new List<string>();
-        var outputDirectory = Path.GetDirectoryName(request.OutputIsoPath);
+        string? outputDirectory = Path.GetDirectoryName(request.OutputIsoPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
         {
             Directory.CreateDirectory(outputDirectory);
         }
 
-        var arguments = CreateArguments(request, warnings);
+        List<string> arguments = CreateArguments(request, warnings);
         if (arguments.Count == 0)
         {
             return IsoCreationResult.Failure(
@@ -45,9 +49,9 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
         }
 
         var stopwatch = Stopwatch.StartNew();
-        using var process = StartProcess(_toolPath, arguments);
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderrTask = ReadStdoutWithProgressAsync(process.StandardError, request.OnProgress, cancellationToken);
+        using Process process = StartProcess(_toolPath, arguments);
+        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        Task<string> stderrTask = ReadStdoutWithProgressAsync(process.StandardError, request.OnProgress, cancellationToken);
 
         try
         {
@@ -58,18 +62,20 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
             try
             {
                 if (!process.HasExited)
+                {
                     process.Kill(entireProcessTree: true);
+                }
             }
             catch (InvalidOperationException) { }
             throw;
         }
 
-        var stdout = await stdoutTask.ConfigureAwait(false);
-        var stderr = await stderrTask.ConfigureAwait(false);
+        string stdout = await stdoutTask.ConfigureAwait(false);
+        string stderr = await stderrTask.ConfigureAwait(false);
         stopwatch.Stop();
 
-        var succeeded = process.ExitCode == 0 && File.Exists(request.OutputIsoPath);
-        var outputSize = succeeded ? new FileInfo(request.OutputIsoPath).Length : 0;
+        bool succeeded = process.ExitCode == 0 && File.Exists(request.OutputIsoPath);
+        long outputSize = succeeded ? new FileInfo(request.OutputIsoPath).Length : 0;
 
         return new IsoCreationResult(
             request.OutputIsoPath,
@@ -95,7 +101,7 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
             UseShellExecute = false
         };
 
-        foreach (var argument in arguments)
+        foreach (string argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);
         }
@@ -106,7 +112,7 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
 
     private static List<string> CreateArguments(IsoCreationRequest request, List<string> warnings)
     {
-        var uefiBootImage = Path.Combine(request.StagingDirectory, "efi", "microsoft", "boot", "efisys.bin");
+        string uefiBootImage = Path.Combine(request.StagingDirectory, "efi", "microsoft", "boot", "efisys.bin");
 
         if (!File.Exists(uefiBootImage))
         {
@@ -114,8 +120,11 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
             return [];
         }
 
-        var label = string.IsNullOrWhiteSpace(request.VolumeLabel) ? "ESD_ISO" : request.VolumeLabel.Trim();
-        if (label.Length > 32) label = label[..32];
+        string label = string.IsNullOrWhiteSpace(request.VolumeLabel) ? "ESD_ISO" : request.VolumeLabel.Trim();
+        if (label.Length > 32)
+        {
+            label = label[..32];
+        }
 
         var arguments = new List<string>
         {
@@ -126,11 +135,10 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
             $"-l{label}",
             "-e",
             "-pEF",
-            $"-b{uefiBootImage}"
+            $"-b{uefiBootImage}",
+            request.StagingDirectory,
+            request.OutputIsoPath
         };
-
-        arguments.Add(request.StagingDirectory);
-        arguments.Add(request.OutputIsoPath);
         return arguments;
     }
 
@@ -142,7 +150,7 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
         Action<IsoOperationProgress>? onProgress,
         CancellationToken ct)
     {
-        var buffer = new char[256];
+        char[] buffer = new char[256];
         var segment = new StringBuilder();
         var all = new StringBuilder();
 
@@ -150,20 +158,22 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
         {
             int count = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), ct).ConfigureAwait(false);
             if (count == 0)
+            {
                 break;
+            }
 
             for (int i = 0; i < count; i++)
             {
                 char c = buffer[i];
                 if (c is '\r' or '\n')
                 {
-                    var line = segment.ToString().Trim();
+                    string line = segment.ToString().Trim();
                     if (line.Length > 0)
                     {
                         all.Append(line).Append('\n');
-                        var match = PercentageRegex().Match(line);
+                        Match match = PercentageRegex().Match(line);
                         if (match.Success &&
-                            double.TryParse(match.Groups[1].ValueSpan, out var pct))
+                            double.TryParse(match.Groups[1].ValueSpan, out double pct))
                         {
                             onProgress?.Invoke(new IsoOperationProgress(pct));
                         }
@@ -177,9 +187,11 @@ public sealed partial class OscdimgIsoCreationService : IIsoCreationService
             }
         }
 
-        var remaining = segment.ToString().Trim();
+        string remaining = segment.ToString().Trim();
         if (remaining.Length > 0)
+        {
             all.Append(remaining);
+        }
 
         return all.ToString();
     }

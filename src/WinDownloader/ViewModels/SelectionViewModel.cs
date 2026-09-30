@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -6,6 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 using WinDownloader.Helpers;
 using WinDownloader.Interfaces;
 using WinDownloader.Models;
+using WinDownloader.Services;
 
 namespace WinDownloader.ViewModels;
 
@@ -13,17 +17,9 @@ public sealed partial class SelectionViewModel : ObservableObject
 {
     private readonly IUpdateCatalogService _catalogService;
     private readonly IDownloadTaskOrchestratorService _orchestrator;
-    private readonly List<RawFile> _allFiles = new();
+    private readonly List<RawFile> _allFiles = [];
     private bool _isUpdatingFilters;
     private bool _hasLoadAttempted;
-    private bool _isLoading;
-    private string _loadingMessage = StringRes.Get("Selection_LoadingMessage");
-    private bool _hasError;
-    private string _errorMessage = string.Empty;
-    private string _operationMessage = string.Empty;
-    private InfoBarSeverity _operationSeverity = InfoBarSeverity.Informational;
-    private CatalogOption? _selectedLanguage;
-    private CatalogOption? _selectedArchitecture;
 
     public SelectionViewModel(IUpdateCatalogService catalogService, IDownloadTaskOrchestratorService orchestrator)
     {
@@ -32,14 +28,14 @@ public sealed partial class SelectionViewModel : ObservableObject
         EnqueueDownloadCommand = new AsyncRelayCommand<RawFileGroup>(EnqueueDownloadAsync);
     }
 
-    public ObservableCollection<CatalogOption> Languages { get; } = new();
+    public ObservableCollection<CatalogOption> Languages { get; } = [];
 
-    public ObservableCollection<CatalogOption> Architectures { get; } = new();
+    public ObservableCollection<CatalogOption> Architectures { get; } = [];
 
     /// <summary>Command exposed to <see cref="Views.Controls.RawFileItemControl"/> for starting an ESD download.</summary>
     public AsyncRelayCommand<RawFileGroup> EnqueueDownloadCommand { get; }
 
-    public ObservableCollection<RawFileItemViewModel> FilteredGroups { get; } = new();
+    public ObservableCollection<RawFileItemViewModel> FilteredGroups { get; } = [];
     public Visibility LoadingVisibility => !_hasLoadAttempted || IsLoading ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility ContentVisibility => _hasLoadAttempted && !IsLoading && !HasError
@@ -58,10 +54,10 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     public bool IsLoading
     {
-        get => _isLoading;
+        get;
         private set
         {
-            if (SetProperty(ref _isLoading, value))
+            if (SetProperty(ref field, value))
             {
                 OnPropertyChanged(nameof(LoadingVisibility));
                 OnPropertyChanged(nameof(ContentVisibility));
@@ -70,18 +66,15 @@ public sealed partial class SelectionViewModel : ObservableObject
         }
     }
 
-    public string LoadingMessage
-    {
-        get => _loadingMessage;
-        private set => SetProperty(ref _loadingMessage, value);
-    }
+    [ObservableProperty]
+    public partial string LoadingMessage { get; private set; } = StringRes.Get("Selection_LoadingMessage");
 
     public bool HasError
     {
-        get => _hasError;
+        get;
         private set
         {
-            if (SetProperty(ref _hasError, value))
+            if (SetProperty(ref field, value))
             {
                 OnPropertyChanged(nameof(ContentVisibility));
                 OnPropertyChanged(nameof(ErrorVisibility));
@@ -90,27 +83,23 @@ public sealed partial class SelectionViewModel : ObservableObject
         }
     }
 
-    public string ErrorMessage
-    {
-        get => _errorMessage;
-        private set => SetProperty(ref _errorMessage, value);
-    }
+    [ObservableProperty]
+    public partial string ErrorMessage { get; private set; } = string.Empty;
 
     public string OperationMessage
     {
-        get => _operationMessage;
+        get;
         private set
         {
-            if (SetProperty(ref _operationMessage, value))
+            if (SetProperty(ref field, value))
+            {
                 OnPropertyChanged(nameof(IsOperationMessageOpen));
+            }
         }
-    }
+    } = string.Empty;
 
-    public InfoBarSeverity OperationSeverity
-    {
-        get => _operationSeverity;
-        private set => SetProperty(ref _operationSeverity, value);
-    }
+    [ObservableProperty]
+    public partial InfoBarSeverity OperationSeverity { get; private set; } = InfoBarSeverity.Informational;
 
     public bool IsOperationMessageOpen
     {
@@ -118,16 +107,18 @@ public sealed partial class SelectionViewModel : ObservableObject
         set
         {
             if (!value)
+            {
                 OperationMessage = string.Empty;
+            }
         }
     }
 
     public CatalogOption? SelectedLanguage
     {
-        get => _selectedLanguage;
+        get;
         set
         {
-            if (SetProperty(ref _selectedLanguage, value) && !_isUpdatingFilters)
+            if (SetProperty(ref field, value) && !_isUpdatingFilters)
             {
                 RefreshFilterOptions(FilterChange.Language);
             }
@@ -136,10 +127,10 @@ public sealed partial class SelectionViewModel : ObservableObject
 
     public CatalogOption? SelectedArchitecture
     {
-        get => _selectedArchitecture;
+        get;
         set
         {
-            if (SetProperty(ref _selectedArchitecture, value) && !_isUpdatingFilters)
+            if (SetProperty(ref field, value) && !_isUpdatingFilters)
             {
                 RefreshFilterOptions(FilterChange.Architecture);
             }
@@ -173,7 +164,7 @@ public sealed partial class SelectionViewModel : ObservableObject
 
         try
         {
-            var files = await _catalogService.GetCatalogAsync(forceRefresh);
+            IReadOnlyList<RawFile> files = await _catalogService.GetCatalogAsync(forceRefresh);
             _allFiles.Clear();
             _allFiles.AddRange(files);
             InitializeFilters();
@@ -238,12 +229,12 @@ public sealed partial class SelectionViewModel : ObservableObject
     {
         yield return CatalogOption.All(StringRes.Get("Selection_AllLanguages"));
 
-        foreach (var option in _allFiles
+        foreach (CatalogOption? option in _allFiles
             .GroupBy(file => file.LanguageCode, StringComparer.OrdinalIgnoreCase)
             .Select(group =>
             {
-                var first = group.First();
-                var label = string.IsNullOrWhiteSpace(first.Language)
+                RawFile first = group.First();
+                string label = string.IsNullOrWhiteSpace(first.Language)
                     ? first.LanguageCode
                     : $"{first.LanguageCode} - {first.Language}";
                 return new CatalogOption(first.LanguageCode, label);
@@ -258,7 +249,7 @@ public sealed partial class SelectionViewModel : ObservableObject
     {
         yield return CatalogOption.All(StringRes.Get("Selection_AllArchitectures"));
 
-        foreach (var architecture in _allFiles
+        foreach (string? architecture in _allFiles
             .Where(MatchesSelectedLanguage)
             .Select(file => file.Architecture)
             .Where(value => !string.IsNullOrWhiteSpace(value))
@@ -273,13 +264,13 @@ public sealed partial class SelectionViewModel : ObservableObject
     {
         FilteredGroups.Clear();
 
-        foreach (var group in _allFiles
+        foreach (RawFileGroup? group in _allFiles
             .Where(MatchesSelectedLanguage)
             .Where(MatchesSelectedArchitecture)
             .GroupBy(file => file.FilePath, StringComparer.OrdinalIgnoreCase)
             .Select(g =>
             {
-                var representative = g.First();
+                RawFile representative = g.First();
                 var editions = g
                     .Select(f => f.Edition)
                     .Where(e => !string.IsNullOrWhiteSpace(e))
@@ -330,7 +321,7 @@ public sealed partial class SelectionViewModel : ObservableObject
         IEnumerable<CatalogOption> options)
     {
         target.Clear();
-        foreach (var option in options)
+        foreach (CatalogOption option in options)
         {
             target.Add(option);
         }
@@ -365,7 +356,7 @@ public sealed partial class SelectionViewModel : ObservableObject
         try
         {
             var task = DownloadTask.FromRawFileGroup(group);
-            var result = await _orchestrator.EnqueueAsync(task);
+            TaskOperationResult result = await _orchestrator.EnqueueAsync(task);
 
             OperationSeverity = result.Succeeded
                 ? InfoBarSeverity.Success

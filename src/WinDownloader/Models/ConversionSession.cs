@@ -1,7 +1,10 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Diagnostics;
 using ManagedWimLib;
-using WinDownloader.Iso;
-using WinDownloader.Wim;
+using WinDownloader.Iso.Models;
+using WinDownloader.Wim.Models;
 
 namespace WinDownloader.Models;
 
@@ -15,9 +18,6 @@ internal sealed class ConversionSession
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
     private readonly Dictionary<EsdToIsoStage, double> _wimStageHighWaterMarks = [];
     private readonly Dictionary<EsdToIsoStage, HashSet<string>> _metadataItemsByStage = [];
-
-    private EsdToIsoStage _currentStage;
-    private double _currentProgress;
     private DateTimeOffset _lastPublishedAt = DateTimeOffset.MinValue;
     private double _lastPublishedProgress = -1d;
     private EsdToIsoStage? _lastPublishedStage;
@@ -51,8 +51,8 @@ internal sealed class ConversionSession
     public IReadOnlyList<WimImageInfo> Images { get; set; } = [];
     public IsoCreationResult? IsoResult { get; set; }
     public List<string> Warnings { get; } = [];
-    public EsdToIsoStage CurrentStage => _currentStage;
-    public double CurrentProgress => _currentProgress;
+    public EsdToIsoStage CurrentStage { get; private set; }
+    public double CurrentProgress { get; private set; }
     public CompressionType InstallCompression => _request.InstallCompression;
     public bool RecompressInstallImage => _request.RecompressInstallImage;
 
@@ -69,14 +69,14 @@ internal sealed class ConversionSession
 
     private double CalculateWimProgress(EsdToIsoStage stage, WimOperationProgress progress)
     {
-        var candidate = StageProgress(stage, progress.Stage, progress.Percent);
+        double candidate = StageProgress(stage, progress.Stage, progress.Percent);
 
-        if (TryGetMetadataItemProgress(stage, progress, out var metadataProgress))
+        if (TryGetMetadataItemProgress(stage, progress, out double metadataProgress))
         {
             candidate = metadataProgress;
         }
 
-        if (_wimStageHighWaterMarks.TryGetValue(stage, out var highWater))
+        if (_wimStageHighWaterMarks.TryGetValue(stage, out double highWater))
         {
             candidate = Math.Max(candidate, highWater);
         }
@@ -97,20 +97,20 @@ internal sealed class ConversionSession
             return false;
         }
 
-        var expectedCount = ExpectedMetadataItemCount(stage);
+        int expectedCount = ExpectedMetadataItemCount(stage);
         if (expectedCount == 0)
         {
             return false;
         }
 
-        if (!_metadataItemsByStage.TryGetValue(stage, out var seenItems))
+        if (!_metadataItemsByStage.TryGetValue(stage, out HashSet<string>? seenItems))
         {
             seenItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             _metadataItemsByStage[stage] = seenItems;
         }
 
         seenItems.Add(progress.CurrentItem);
-        var (start, end) = StageBounds(stage);
+        (double start, double end) = StageBounds(stage);
         metadataProgress = start + (end - start) * 0.02d * Math.Min(seenItems.Count, expectedCount) / expectedCount;
         return true;
     }
@@ -135,21 +135,23 @@ internal sealed class ConversionSession
     {
         progress = Math.Clamp(progress, 0, 1);
 
-        if (state == EsdToIsoTaskState.Running && progress < _currentProgress)
+        if (state == EsdToIsoTaskState.Running && progress < CurrentProgress)
         {
-            progress = _currentProgress;
+            progress = CurrentProgress;
         }
 
-        _currentStage = stage;
-        _currentProgress = progress;
+        CurrentStage = stage;
+        CurrentProgress = progress;
 
-        var now = DateTimeOffset.Now;
-        var stageChanged = _lastPublishedStage != stage;
-        var progressChanged = Math.Abs(progress - _lastPublishedProgress) >= 0.005;
-        var terminal = state is EsdToIsoTaskState.Completed or EsdToIsoTaskState.Failed or EsdToIsoTaskState.Canceled;
+        DateTimeOffset now = DateTimeOffset.Now;
+        bool stageChanged = _lastPublishedStage != stage;
+        bool progressChanged = Math.Abs(progress - _lastPublishedProgress) >= 0.005;
+        bool terminal = state is EsdToIsoTaskState.Completed or EsdToIsoTaskState.Failed or EsdToIsoTaskState.Canceled;
 
         if (!force && !terminal && !stageChanged && !progressChanged && now - _lastPublishedAt < _snapshotInterval)
+        {
             return;
+        }
 
         _lastPublishedStage = stage;
         _lastPublishedProgress = progress;
@@ -173,7 +175,7 @@ internal sealed class ConversionSession
 
     public EsdToIsoResult Finish(bool succeeded, string? errorMessage)
     {
-        var completedAt = DateTimeOffset.Now;
+        DateTimeOffset completedAt = DateTimeOffset.Now;
         var result = new EsdToIsoResult(
             _request.SourceEsdPath,
             StagingDirectory,
@@ -191,7 +193,7 @@ internal sealed class ConversionSession
         Publish(
             succeeded ? EsdToIsoTaskState.Completed : EsdToIsoTaskState.Failed,
             succeeded ? EsdToIsoStage.Completed : EsdToIsoStage.Failed,
-            succeeded ? 1d : _currentProgress,
+            succeeded ? 1d : CurrentProgress,
             succeeded ? IsoPath : null,
             succeeded ? null : errorMessage,
             completedAt: completedAt,
@@ -202,7 +204,7 @@ internal sealed class ConversionSession
 
     private static double StageProgress(EsdToIsoStage stage, WimOperationStage wimStage, double? nestedPercent)
     {
-        var (start, end) = StageBounds(stage);
+        (double start, double end) = StageBounds(stage);
         double width = end - start;
         double pct = nestedPercent ?? 0d;
 

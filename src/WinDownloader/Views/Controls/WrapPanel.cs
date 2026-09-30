@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Foundation;
@@ -8,7 +11,7 @@ namespace WinDownloader.Views.Controls;
 /// A panel that arranges children left-to-right and wraps to the next row
 /// when there is no more horizontal space, respecting each child's desired size.
 /// </summary>
-public sealed class WrapPanel : Panel
+public partial class WrapPanel : Panel
 {
     public static readonly DependencyProperty HorizontalSpacingProperty =
         DependencyProperty.Register(nameof(HorizontalSpacing), typeof(double), typeof(WrapPanel),
@@ -45,7 +48,7 @@ public sealed class WrapPanel : Panel
         foreach (UIElement child in Children)
         {
             child.Measure(new Size(availableSize.Width, availableSize.Height));
-            var desired = child.DesiredSize;
+            Size desired = child.DesiredSize;
 
             double itemX = firstInRow ? 0 : x + hGap;
 
@@ -78,7 +81,7 @@ public sealed class WrapPanel : Panel
 
         foreach (UIElement child in Children)
         {
-            var desired = child.DesiredSize;
+            Size desired = child.DesiredSize;
             double itemX = firstInRow ? 0 : x + hGap;
 
             if (!firstInRow && itemX + desired.Width > finalSize.Width)
@@ -95,7 +98,7 @@ public sealed class WrapPanel : Panel
             firstInRow = false;
         }
 
-        foreach (var (child, cx, cy, size) in positions)
+        foreach ((UIElement? child, double cx, double cy, Size size) in positions)
         {
             child.Arrange(new Rect(cx, cy, size.Width, size.Height));
         }

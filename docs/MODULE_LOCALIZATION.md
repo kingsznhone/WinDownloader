@@ -2,9 +2,7 @@
 
 ## 概述
 
-主 WinUI 应用使用 Windows App SDK / MRT Core 的 `.resw` 字符串资源本地化静态 XAML 文本。当前只维护 `en-US` 和 `zh-CN` 两套 UI 资源，语言切换后需要重启应用生效。
-
-本项目是非 MSIX 解包部署，但主项目仍由 WinUI / Windows App SDK MSBuild 管线生成应用 PRI。正常 `dotnet build` 会把 `Strings/{language}/Resources.resw` 编入输出目录中的 `WinDownloader.pri`，不需要手动运行 `MakePri.exe`，也不需要额外生成独立的 `resources.pri`。`dotnet publish` 阶段通过项目内 MSBuild target 自动把已生成的 PRI 和 XBF 文件复制到发布目录。
+主应用使用 MRT Core `.resw` 资源，支持 `en-US` / `zh-CN`，切换后重启生效。静态 XAML 使用 `x:Uid`，动态 UI 文本通过 `Helpers/StringRes.cs` 读取资源。
 
 ## 文件清单
 
@@ -13,6 +11,7 @@
 | `src/WinDownloader/Strings/en-US/Resources.resw` | 英文字符串资源 |
 | `src/WinDownloader/Strings/zh-CN/Resources.resw` | 简体中文字符串资源 |
 | `src/WinDownloader/App.xaml.cs` | 启动时应用语言覆盖，必须早于 `InitializeComponent()` |
+| `src/WinDownloader/Helpers/StringRes.cs` | 动态字符串资源读取 |
 | `src/WinDownloader/Services/AppSettingsService.cs` | 保存和解析 `AppLanguage` |
 | `src/WinDownloader/ViewModels/SettingsViewModel.cs` | 语言选择和重启应用命令 |
 | `src/WinDownloader/Views/Pages/SettingsPage.xaml` | 语言设置、重启卡片和设置页静态文本 |
@@ -27,11 +26,12 @@
 - 页面标题、筛选器标题、空状态、错误标题、常见按钮。
 - 设置页分组标题、设置卡片标题/说明、语言选项、重启按钮、重置按钮。
 - 目录条目和下载任务控件里的少量静态操作按钮。
+- ViewModel 中通过 `StringRes` 生成的按钮、操作提示、ISO/WIM 阶段文本。
 
 暂不本地化：
 
 - 产品目录中的语言、版本、文件名和 edition 等数据字段。
-- ViewModel 生成的动态状态、错误消息、下载进度和 ISO 转换阶段文本。
+- 服务和底层工具直接返回的状态、错误消息及诊断输出。
 - 清单显示名称、安装包元数据和系统 shell 集成文本。
 
 ## 资源命名约定
@@ -81,25 +81,9 @@ XAML 使用 `x:Uid` 引用资源，资源键使用 `{Uid}.{Property}` 形式：
 
 ## PRI 构建行为
 
-官方文档对裸 MakePri 工作流会建议手动生成 `resources.pri` 并复制到 exe 目录。但本项目是 SDK-style WinUI 项目，具备这些关键配置：
-
-```xml
-<UseWinUI>true</UseWinUI>
-<WinUISDKReferences>true</WinUISDKReferences>
-<WindowsPackageType>None</WindowsPackageType>
-<PackageReference Include="Microsoft.Windows.SDK.BuildTools" ... />
-<PackageReference Include="Microsoft.WindowsAppSDK" ... />
-```
-
-因此 MSBuild 会在构建时自动处理 `.resw`，输出应用 PRI：
-
-```text
-src/WinDownloader/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/WinDownloader.pri
-```
-
-发布目录不会天然包含所有 WinUI 生成资源，因此 `WinDownloader.csproj` 包含 `CopyWinUIResourcesToPublishDirectory` target，在 `Publish` 后把已生成的 `WinDownloader.pri`、`App.xbf`、`MainWindow.xbf` 和 `Views/**/*.xbf` 复制到 `$(PublishDir)`。
-
-不要为当前项目额外添加脚本生成 `resources.pri`，否则容易和现有 `WinDownloader.pri` 产生重复或路径不一致问题。只有在将来脱离 WinUI MSBuild 管线、改用自定义构建系统，才需要重新设计 MakePri 生成流程。
+- `dotnet build` 将 `Strings/{language}/Resources.resw` 编入输出目录的 `WinDownloader.pri`，无需手动生成 `resources.pri`。
+- `CopyWinUIResourcesToPublishDirectory` 在 `Publish` 后复制应用 PRI、`App.xbf`、`MainWindow.xbf` 和 `Views/**/*.xbf` 到 `$(PublishDir)`。
+- 缺失资源时先检查输出中的 PRI/XBF，再检查资源键；不要另加一套 MakePri 生成流程。
 
 ## 验证
 
@@ -122,15 +106,7 @@ dotnet publish .\src\WinDownloader\WinDownloader.csproj -c Debug -r win-x64 --se
 Get-ChildItem .\src\WinDownloader\bin\Debug\net10.0-windows10.0.26100.0\win-x64\publish -Include WinDownloader.pri,*.xbf -Recurse -File
 ```
 
-需要确认资源键是否进入 PRI 时，可 dump：
-
-```powershell
-$makepri = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windows.sdk.buildtools\10.0.28000.1839\bin\10.0.28000.0\x64\makepri.exe'
-$pri = '.\src\WinDownloader\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\WinDownloader.pri'
-$dump = Join-Path $env:TEMP 'WinDownloader.pri.xml'
-& $makepri dump /if $pri /of $dump /dt detailed
-Select-String -Path $dump -Pattern 'Settings_RestartCard|Nav_Selection|Download_Title'
-```
+需要检查 PRI 内部资源键时，使用已安装 Windows SDK 的 `makepri dump /if <PRI路径> /of <输出XML> /dt detailed`。
 
 手动 UI 验证：
 
@@ -158,8 +134,4 @@ Select-String -Path $dump -Pattern 'Settings_RestartCard|Nav_Selection|Download_
 5. 在 `SettingsPage.xaml` 添加语言选项和对应资源键。
 6. 更新本文档和设置模块文档。
 
-动态字符串本地化：
-
-- 优先新增小型本地化服务封装 Windows App SDK `Microsoft.Windows.ApplicationModel.Resources` API。
-- 不要直接使用 UWP 的 `Windows.ApplicationModel.Resources.ResourceLoader` 或 `Windows.Globalization.ApplicationLanguages`。
-- 在非 MSIX 场景中，从代码读取字符串时要先验证 PRI 路径和 ResourceMap 名称，必要时用 MakePri dump 确认 URI。
+动态文本复用 `StringRes`，并在两套资源中添加同名键。使用 Windows App SDK 的资源 API，不使用 UWP `ResourceLoader` 或 `ApplicationLanguages`。

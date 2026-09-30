@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Diagnostics;
 using Downloader;
 using WinDownloader.Interfaces;
@@ -57,7 +60,7 @@ public sealed class DownloadService : IDownloadService
         string url,
         string destinationPath,
         IProgress<DownloadProgress> progress,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(url);
         ArgumentNullException.ThrowIfNull(destinationPath);
@@ -65,16 +68,16 @@ public sealed class DownloadService : IDownloadService
 
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
 
-        var config = BuildConfiguration();
+        DownloadConfiguration config = BuildConfiguration();
         using var downloader = new Downloader.DownloadService(config);
 
         // Track speed with a rolling window over the last second.
         var sw = Stopwatch.StartNew();
         long lastReportedBytes = 0;
-        var lastSpeedSample = sw.Elapsed;
-        var lastProgressReport = TimeSpan.Zero;
+        TimeSpan lastSpeedSample = sw.Elapsed;
+        TimeSpan lastProgressReport = TimeSpan.Zero;
         var progressReportInterval = TimeSpan.FromMilliseconds(500);
-        var progressGate = new object();
+        Lock progressGate = new();
 
         downloader.DownloadProgressChanged += (_, e) =>
         {
@@ -82,13 +85,13 @@ public sealed class DownloadService : IDownloadService
 
             lock (progressGate)
             {
-                var now = sw.Elapsed;
-                var elapsed = now - lastSpeedSample;
+                TimeSpan now = sw.Elapsed;
+                TimeSpan elapsed = now - lastSpeedSample;
 
                 long speed;
                 if (elapsed.TotalSeconds >= 0.5)
                 {
-                    var bytesDelta = e.ReceivedBytesSize - lastReportedBytes;
+                    long bytesDelta = e.ReceivedBytesSize - lastReportedBytes;
                     speed = elapsed.TotalSeconds > 0
                         ? (long)(bytesDelta / elapsed.TotalSeconds)
                         : 0;
@@ -101,9 +104,11 @@ public sealed class DownloadService : IDownloadService
                     speed = (long)e.BytesPerSecondSpeed;
                 }
 
-                var isComplete = e.TotalBytesToReceive > 0 && e.ReceivedBytesSize >= e.TotalBytesToReceive;
+                bool isComplete = e.TotalBytesToReceive > 0 && e.ReceivedBytesSize >= e.TotalBytesToReceive;
                 if (!isComplete && now - lastProgressReport < progressReportInterval)
+                {
                     return;
+                }
 
                 lastProgressReport = now;
                 progressSnapshot = new DownloadProgress(
@@ -117,7 +122,7 @@ public sealed class DownloadService : IDownloadService
         };
 
         // Wire up cancellation: the library exposes CancelAsync but not a CT directly.
-        await using var reg = cancellationToken.Register(static state =>
+        await using CancellationTokenRegistration reg = ct.Register(static state =>
         {
             var service = (Downloader.DownloadService)state!;
             _ = Task.Run(() =>
@@ -133,17 +138,23 @@ public sealed class DownloadService : IDownloadService
         downloader.DownloadFileCompleted += (_, e) =>
         {
             if (e.Cancelled)
-                tcs.TrySetCanceled(cancellationToken);
+            {
+                tcs.TrySetCanceled(ct);
+            }
             else
+            {
                 tcs.TrySetResult(e.Error);
+            }
         };
 
-        await downloader.DownloadFileTaskAsync(url, destinationPath).ConfigureAwait(false);
+        await downloader.DownloadFileTaskAsync(url, destinationPath, ct).ConfigureAwait(false);
 
         // DownloadFileTaskAsync already awaits completion, but errors surface through
         // the event; re-throw them here so the caller gets a proper exception.
-        var error = await tcs.Task.ConfigureAwait(false);
+        Exception? error = await tcs.Task.ConfigureAwait(false);
         if (error is not null)
+        {
             throw new InvalidOperationException($"Download failed: {error.Message}", error);
+        }
     }
 }

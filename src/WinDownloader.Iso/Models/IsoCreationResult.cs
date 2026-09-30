@@ -1,4 +1,4 @@
-namespace WinDownloader.Iso;
+namespace WinDownloader.Iso.Models;
 
 public sealed record IsoCreationResult(
     string OutputIsoPath,

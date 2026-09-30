@@ -9,17 +9,20 @@
 | 文件 | 说明 |
 |------|------|
 | `Models/CatalogOption.cs` | 筛选器选项 |
+| `Models/ConversionSession.cs` | 转换会话、进度节流和整体进度映射 |
 | `Models/DownloadTask.cs` | ESD 下载任务 |
 | `Models/EsdToIsoRequest.cs` | ESD 到 ISO 转换请求 |
 | `Models/EsdToIsoResult.cs` | ESD 到 ISO 转换结果 |
 | `Models/EsdToIsoTaskSnapshot.cs` | ISO 转换状态、阶段和进度快照 |
-| `Models/IsoCreationRequest.cs` / `IsoCreationResult.cs` | ISO 创建后端请求和结果 |
-| `Models/IsoOperationProgress.cs` | oscdimg 进度 |
+| `../WinDownloader.Iso/Models/IsoCreationRequest.cs` / `IsoCreationResult.cs` | 共享 ISO 创建后端请求和结果 |
+| `../WinDownloader.Iso/Models/IsoOperationProgress.cs` | 共享 oscdimg 进度 |
 | `Models/RawFile.cs` | products.xml 中的单个文件条目 |
 | `Models/RawFileGroup.cs` | 按下载 URL 聚合后的文件组 |
 | `Models/TagType.cs` | UI 标签颜色类型 |
 | `Models/TaskState.cs` | 下载任务生命周期状态 |
-| `Models/Wim*.cs` | WIM/ESD 映像信息、导出/提取请求和进度 |
+| `../WinDownloader.Wim/Models/Wim*.cs` | 共享 WIM/ESD 映像信息、导出/提取请求和进度 |
+
+文件路径相对 `src/WinDownloader/`。
 
 ## RawFile
 
@@ -47,7 +50,7 @@
 
 ## DownloadTask
 
-`DownloadTask` 是主应用持久化和运行时共享的 ESD 下载任务模型。它是普通 sealed class，不继承 `ObservableObject`；UI 更新通过 `DownloadTaskSnapshot` 传递给 ViewModel。
+`DownloadTask` 不直接通知绑定；UI 更新通过 `DownloadTaskSnapshot` 传递给 ViewModel。
 
 ### 身份和目录字段
 
@@ -70,24 +73,11 @@
 | `ErrorMessage` | 失败原因 | 是 |
 | `CreatedAt` / `UpdatedAt` | 时间戳 | 是 |
 
-### 创建方式
-
-```csharp
-var task = DownloadTask.FromRawFileGroup(group);
-```
+从目录文件组创建任务使用 `DownloadTask.FromRawFileGroup(group)`。
 
 ## TaskState
 
-```csharp
-public enum TaskState
-{
-    Queued,
-    Downloading,
-    Verifying,
-    Completed,
-    Failed,
-}
-```
+状态为 `Queued`、`Downloading`、`Verifying`、`Completed`、`Failed`；迁移规则见 [下载模块](MODULE_DOWNLOAD.md#状态流)。
 
 下载任务状态仍不包含 ISO 转换态。转换生命周期由 `EsdToIsoTaskSnapshot.State` 表示，并通过 `IsoConversionTaskSnapshot` 独立通知 UI。
 
@@ -118,31 +108,15 @@ public enum TaskState
 | `WimProgress` | ManagedWimLib 子进度 |
 | `IsoProgress` | oscdimg 子进度 |
 
-`ConversionSession` 在服务内部维护阶段高水位，保证 `Running` 快照的整体进度不回退。主应用和 POC 都向共享库传入真实 staging 目录；POC 只是在 `--output-root` 下自行拼出 `staging` 子目录后再传入。
+`ConversionSession` 维护阶段高水位，保证 `Running` 快照的整体进度不回退。
 
 ### WIM / ISO 模型
 
-| 模型 | 说明 |
-|------|------|
-| `WimImageInfo` | 从 ESD/WIM 读取的映像索引、名称、版本、语言、架构、boot 标记等 |
-| `WimExtractRequest` | 提取单个映像到目录 |
-| `WimExportRequest` / `WimImageExportItem` | 把多个源映像导出到目标 WIM/ESD |
-| `WimOperationProgress` | ManagedWimLib 回调转换后的阶段、百分比、字节和当前项 |
-| `IsoCreationRequest` | oscdimg 输入目录、输出 ISO 和卷标；可携带进度回调 |
-| `IsoCreationResult` | oscdimg 命令、退出码、stdout/stderr、输出大小和 warnings |
-| `IsoOperationProgress` | oscdimg 百分比 |
+共享后端的请求、结果和进度字段分别见 [WIM 模块](MODULE_WIM.md#模型) 和 [ISO 模块](MODULE_ISO.md#模型)。
 
 ## 路径模型
 
-路径不属于 `DownloadTask` 职责，由 `IDownloadTaskPathService` 统一解析：
-
-```text
-ESD: {DownloadDirectory}\WindowsImage\{LanguageCode}\{Architecture}\{FileNameWithoutExtension}.esd
-ISO: {DownloadDirectory}\WindowsImage\{LanguageCode}\{Architecture}\{FileNameWithoutExtension}.iso
-ISO staging: {DownloadDirectory}\WindowsImage\{LanguageCode}\{Architecture}\.staging
-```
-
-这样可以避免模型持有环境依赖，也让 UI、删除逻辑、下载管道使用同一套路径规则。
+路径由 `IDownloadTaskPathService` 统一解析，不由模型拼接；具体规则见 [下载路径](MODULE_DOWNLOAD.md#downloadtaskpathservice) 和 [转换路径](MODULE_CONVERSION.md#路径规则)。
 
 ## TagType
 

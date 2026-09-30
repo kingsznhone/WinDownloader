@@ -6,17 +6,6 @@
 
 ESD 下载、SHA-256 校验、SQLite 下载任务缓存和下载状态 UI 事件见 [MODULE_DOWNLOAD.md](MODULE_DOWNLOAD.md)。转换任务不写入 SQLite，不扩展下载任务 `TaskState`，重启后不会自动恢复。
 
-核心职责拆分：
-
-| 职责 | 类型 |
-|------|------|
-| ISO 转换任务编排、UI 事件 | `IEsdToIsoOrchestratorService` / `EsdToIsoOrchestratorService` |
-| ESD 到 ISO 转换流水线编排 | `IEsdToIsoConversionService` / `EsdToIsoConversionService`（主应用内） |
-| ESD、ISO、`.staging` 路径解析 | `IDownloadTaskPathService` / `DownloadTaskPathService` |
-| WIM/ESD 原语 | `WinDownloader.Wim` / `IWimProcessingService` / `WimProcessingService`（见 [MODULE_WIM.md](MODULE_WIM.md)） |
-| ISO 创建后端 | `WinDownloader.Iso` / `IIsoCreationService` / `OscdimgIsoCreationService`（见 [MODULE_ISO.md](MODULE_ISO.md)） |
-| 下载任务删除保护 | `IDownloadTaskOrchestratorService` 查询转换编排状态 |
-
 ## 文件清单
 
 | 文件 | 说明 |
@@ -44,17 +33,7 @@ ESD 下载、SHA-256 校验、SQLite 下载任务缓存和下载状态 UI 事件
 
 ## EsdToIsoOrchestratorService
 
-### 主要 API
-
-```csharp
-Task<TaskOperationResult> ConvertToIsoAsync(DownloadTask task, CancellationToken ct = default);
-bool IsConversionQueuedOrRunning(string sha256);
-EsdToIsoTaskSnapshot? GetSnapshot(string sha256);
-void ClearSnapshot(string sha256);
-int ActiveTaskCount { get; }
-event EventHandler<IsoConversionTaskSnapshot> ConversionChanged;
-event EventHandler? ActiveTaskCountChanged;
-```
+`ConvertToIsoAsync` 入队转换；`GetSnapshot` / `ClearSnapshot` 查询和清理内存快照，`IsConversionQueuedOrRunning` 用于下载任务删除保护。
 
 ### 调度检查
 
@@ -66,19 +45,11 @@ event EventHandler? ActiveTaskCountChanged;
 
 如果最终 ISO 文件已存在，方法返回成功但不会创建 worker；`DownloadTaskItemViewModel` 会直接打开 ISO 所在目录。否则，ISO orchestrator 创建一个后台 worker，并先发布 `NotStarted` 快照。
 
+worker 去重与注册在锁内完成；调度和转换均使用 Host 关闭令牌。
+
 ### 固定单并发
 
-ISO 转换 worker 固定单并发：
-
-```text
-WaitForConversionSlotAsync
-  → EsdToIsoConversionService.ConvertAsync
-  → ProgressChanged(EsdToIsoTaskSnapshot)
-  → ConversionChanged(IsoConversionTaskSnapshot)
-  → DownloadTaskItemViewModel
-```
-
-ISO 转换固定单并发，因为 ESD→ISO 同时消耗 CPU 和磁盘 I/O。这个限制由 `EsdToIsoOrchestratorService` 内部 conversion slot 控制，不读取应用设置，也不与 `MaxConcurrentDownloads` 混用。
+ESD→ISO 消耗 CPU 和磁盘 I/O，由内部 conversion slot 限制为单并发，不读取应用设置，也不与 `MaxConcurrentDownloads` 混用。
 
 ### ActiveTaskCount
 
@@ -86,16 +57,7 @@ ISO 转换固定单并发，因为 ESD→ISO 同时消耗 CPU 和磁盘 I/O。�
 
 ## EsdToIsoConversionService
 
-转换请求使用：
-
-```text
-SourceEsdPath = ResolveEsdPath(task)
-StagingDirectory = ResolveIsoStagingDirectory(task)  # {任务目录}\.staging
-IsoPath = {任务目录}\{FileNameWithoutExtension}.iso
-KeepIntermediateFiles = false
-InstallCompression = LZMS
-RecompressInstallImage = false  # 默认复用官方 solid LZMS 资源写入 install.wim
-```
+主应用使用 `KeepIntermediateFiles=false`、`InstallCompression=LZMS`、`RecompressInstallImage=false`，生成复用官方 solid 资源的 `install.wim`。
 
 转换流水线：
 
@@ -134,7 +96,7 @@ ISO staging: {任务目录}\.staging
 | `EsdToIsoOrchestratorService.ConversionChanged` | 可能来自后台线程，使用 `IsoConversionTaskSnapshot` 携带 ISO 转换状态 |
 | `EsdToIsoOrchestratorService.ActiveTaskCountChanged` | ISO worker active 计数变化时触发，由下载页聚合 |
 
-`DownloadTaskItemViewModel` 会合并转换快照，并通过 `DispatcherQueue.TryEnqueue` 在 UI 线程更新 ISO 主进度、子进度、按钮状态和错误提示。转换快照不再合并进 `DownloadTaskSnapshot`。
+转换快照独立于 `DownloadTaskSnapshot`；UI 应用规则见 [UI 模块](MODULE_UI.md#downloadtaskitemviewmodel)。
 
 ## 应用退出和清理
 
@@ -143,14 +105,10 @@ ISO staging: {任务目录}\.staging
 底层转换的清理策略：
 
 - `EsdToIsoConversionService` 在开始时清理旧 `.staging`。
-- `EsdToIsoConversionService` 在 `finally` 中删除 `.staging`。
+- `EsdToIsoConversionService` 在 `finally` 中按 `KeepIntermediateFiles=false` 尽力删除 `.staging`。
 - `OscdimgIsoCreationService` 在取消时 kill `oscdimg.exe` 进程树。
-- 转换任务不写入 SQLite；重启后不会自动恢复。
 - 如果文件被占用或进程退出不及时，可能留下 `.staging` 或半成品 ISO。
 
 ## 注意事项
 
-- ISO 转换固定单并发，且 CPU/IO 密集；不要与下载并发设置混用，也不要新增 ISO 并发设置，除非重新评估资源占用策略。
-- 不要把转换状态写回下载任务 state 或 SQLite；保持 `EsdToIsoTaskSnapshot` 独立通知 UI。
-- 不要新增 `OutputFormat` 设置；默认安装映像输出为复用官方 solid LZMS 资源的 `sources\install.wim`。
-- 若将来加入 ISO 取消/恢复/重试/持久化，应优先扩展 `EsdToIsoOrchestratorService`，并先设计转换恢复语义。
+新增格式选择、取消/恢复/重试或持久化前先设计转换生命周期，并在 `EsdToIsoOrchestratorService` 扩展；不要复用下载任务 state 或 schema。

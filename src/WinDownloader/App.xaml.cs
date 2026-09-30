@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,14 +11,15 @@ using WinDownloader.Iso;
 using WinDownloader.Iso.Interfaces;
 using WinDownloader.Services;
 using WinDownloader.ViewModels;
-using WinDownloader.Wim;
+using WinDownloader.Wim.Interfaces;
+using WinDownloader.Wim.Services;
 
 namespace WinDownloader;
 
 public partial class App : Application
 {
     private Window? _window;
-    private IHost? _host;
+    private readonly IHost? _host;
 
     public App()
     {
@@ -35,7 +39,7 @@ public partial class App : Application
     }
     private static IHost BuildHost(AppSettingsService settings)
     {
-        var builder = Host.CreateApplicationBuilder();
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton<IAppSettings>(settings);
         builder.Services.AddSingleton<IUpdateCatalogService, UpdateCatalogService>();
         builder.Services.AddSingleton<ICacheService, CacheService>();
@@ -88,11 +92,13 @@ public partial class App : Application
         _window.Activate();
     }
 
-    private static void ApplyLanguageOverride(IAppSettings settings)
+    private static void ApplyLanguageOverride(AppSettingsService settings)
     {
-        var language = settings.ResolveEffectiveLanguage();
+        string language = settings.ResolveEffectiveLanguage();
         if (string.IsNullOrWhiteSpace(language))
+        {
             return;
+        }
 
         ApplicationLanguages.PrimaryLanguageOverride = language;
 
@@ -107,7 +113,9 @@ public partial class App : Application
         Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
     {
         if (_isShuttingDown)
+        {
             return; // Second close attempt — let it through.
+        }
 
         // Cancel the close; we will re-close once cleanup is done.
         args.Cancel = true;

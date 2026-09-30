@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -17,40 +20,55 @@ public sealed partial class MainWindow : Window
     private const uint LR_LOADFROMFILE = 0x0010;
     private const uint LR_DEFAULTSIZE = 0x0040;
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern nint LoadImage(nint hinst, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
+    [LibraryImport("user32.dll", EntryPoint = "LoadImageW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial nint LoadImage(nint hinst, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
 
-    [DllImport("user32.dll")]
-    private static extern nint SendMessage(nint hWnd, uint msg, nint wParam, nint lParam);
+    [LibraryImport("user32.dll", EntryPoint = "SendMessageW")]
+    private static partial nint SendMessage(nint hWnd, uint msg, nint wParam, nint lParam);
+
+    [LibraryImport("user32.dll")]
+    private static partial uint GetDpiForWindow(nint hwnd);
 
     public DownloadPageViewModel DownloadViewModel { get; } = App.GetService<DownloadPageViewModel>();
 
     public MainWindow()
     {
-        if (this.AppWindow.Presenter is OverlappedPresenter presenter)
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.PreferredMinimumWidth = 1280;
+            presenter.PreferredMinimumWidth = 1080;
             presenter.PreferredMinimumHeight = 720;
         }
-        this.ExtendsContentIntoTitleBar = true;
-        this.AppWindow.SetIcon("favicon.ico");
+        float scale = GetDpiScale();
+        AppWindow.Resize(new Windows.Graphics.SizeInt32((int)(1080 * scale), (int)(720 * scale)));
+        ExtendsContentIntoTitleBar = true;
+        AppWindow.SetIcon("favicon.ico");
         SetTaskbarIcon();
         InitializeComponent();
+    }
+
+    private float GetDpiScale()
+    {
+        nint hwnd = WindowNative.GetWindowHandle(this);
+        return GetDpiForWindow(hwnd) / 96f;
     }
 
     // AppWindow.SetIcon only updates the small/title-bar icon on unpackaged apps.
     // The taskbar reads the icon set via WM_SETICON, so it must be set explicitly here.
     private void SetTaskbarIcon()
     {
-        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "favicon.ico");
-        if (!System.IO.File.Exists(iconPath))
+        string iconPath = Path.Combine(AppContext.BaseDirectory, "favicon.ico");
+        if (!File.Exists(iconPath))
+        {
             return;
+        }
 
-        var hIcon = LoadImage(0, iconPath, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
+        nint hIcon = LoadImage(0, iconPath, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
         if (hIcon == 0)
+        {
             return;
+        }
 
-        var hwnd = WindowNative.GetWindowHandle(this);
+        nint hwnd = WindowNative.GetWindowHandle(this);
         SendMessage(hwnd, WM_SETICON, ICON_BIG, hIcon);
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, hIcon);
     }
@@ -73,7 +91,7 @@ public sealed partial class MainWindow : Window
 
     private void Navigate(string tag)
     {
-        var pageType = tag switch
+        Type? pageType = tag switch
         {
             "SelectionPage" => typeof(SelectionPage),
             "DownloadPage" => typeof(DownloadPage),
@@ -81,7 +99,9 @@ public sealed partial class MainWindow : Window
             _ => null
         };
         if (pageType is not null && ContentFrame.CurrentSourcePageType != pageType)
+        {
             ContentFrame.Navigate(pageType);
+        }
     }
 
     private void NavigateToSelectionPage()

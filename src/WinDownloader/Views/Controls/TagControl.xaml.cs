@@ -48,7 +48,7 @@ public sealed partial class TagControl : UserControl
 
     private void ApplyTypeState(TagType type)
     {
-        var stateName = type switch
+        string stateName = type switch
         {
             TagType.Primary => "PrimaryState",
             TagType.Success => "SuccessState",

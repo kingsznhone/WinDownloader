@@ -1,27 +1,25 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using ManagedWimLib;
 using WinDownloader.Interfaces;
-using WinDownloader.Iso;
 using WinDownloader.Iso.Interfaces;
+using WinDownloader.Iso.Models;
 using WinDownloader.Models;
-using WinDownloader.Wim;
+using WinDownloader.Wim.Interfaces;
+using WinDownloader.Wim.Models;
 
 namespace WinDownloader.Services;
 
-public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
+public sealed class EsdToIsoConversionService(
+    IWimProcessingService wimProcessingService,
+    IIsoCreationService isoCreationService) : IEsdToIsoConversionService
 {
     private const uint BootChunkSize = 32 * 1024;
     private const uint InstallWimChunkSize = 128 * 1024;
 
-    private readonly IIsoCreationService _isoCreationService;
-    private readonly IWimProcessingService _wimProcessingService;
-
-    public EsdToIsoConversionService(
-        IWimProcessingService wimProcessingService,
-        IIsoCreationService isoCreationService)
-    {
-        _wimProcessingService = wimProcessingService;
-        _isoCreationService = isoCreationService;
-    }
+    private readonly IIsoCreationService _isoCreationService = isoCreationService;
+    private readonly IWimProcessingService _wimProcessingService = wimProcessingService;
 
     public event EventHandler<EsdToIsoTaskSnapshot>? ProgressChanged;
 
@@ -73,13 +71,15 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
             session.Warnings.AddRange(session.IsoResult.Warnings);
 
             if (!session.IsoResult.Succeeded)
+            {
                 return session.Finish(false, session.IsoResult.ErrorMessage ?? "ISO Create failed.");
+            }
 
             return session.Finish(true, null);
         }
         catch (OperationCanceledException)
         {
-            var completedAt = DateTimeOffset.Now;
+            DateTimeOffset completedAt = DateTimeOffset.Now;
             session.Publish(
                 EsdToIsoTaskState.Canceled,
                 session.CurrentStage,
@@ -104,7 +104,9 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
         finally
         {
             if (!request.KeepIntermediateFiles)
+            {
                 TryDeleteDirectory(session.StagingDirectory);
+            }
         }
     }
 
@@ -163,8 +165,8 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
 
     private static WimImageExportItem CreateExportItem(WimImageInfo image, ExportFlags exportFlags)
     {
-        var name = !string.IsNullOrWhiteSpace(image.Name) ? image.Name : image.Title;
-        var description = !string.IsNullOrWhiteSpace(image.Description) ? image.Description : image.Title;
+        string name = !string.IsNullOrWhiteSpace(image.Name) ? image.Name : image.Title;
+        string description = !string.IsNullOrWhiteSpace(image.Description) ? image.Description : image.Title;
         return new WimImageExportItem(image.Index, name, description, exportFlags);
     }
 
@@ -198,7 +200,7 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
             throw new InvalidOperationException("ESD must contain at least image 1, 2, 3, and one install image.");
         }
 
-        foreach (var requiredIndex in new[] { 1, 2, 3, 4 })
+        foreach (int requiredIndex in new[] { 1, 2, 3, 4 })
         {
             if (images.All(image => image.Index != requiredIndex))
             {
@@ -212,7 +214,9 @@ public sealed class EsdToIsoConversionService : IEsdToIsoConversionService
         try
         {
             if (Directory.Exists(path))
+            {
                 Directory.Delete(path, recursive: true);
+            }
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }

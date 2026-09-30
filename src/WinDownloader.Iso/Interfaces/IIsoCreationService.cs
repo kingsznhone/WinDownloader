@@ -1,3 +1,5 @@
+using WinDownloader.Iso.Models;
+
 namespace WinDownloader.Iso.Interfaces;
 
 public interface IIsoCreationService

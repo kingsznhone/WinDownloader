@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -37,12 +40,12 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
     {
         Directory.CreateDirectory(_cacheDirectory);
 
-        var cabPath = Path.Combine(_cacheDirectory, "products.cab");
-        var xmlPath = Path.Combine(_cacheDirectory, "products.xml");
+        string cabPath = Path.Combine(_cacheDirectory, "products.cab");
+        string xmlPath = Path.Combine(_cacheDirectory, "products.xml");
 
         try
         {
-            var (cabUrl, expectedDigest) = await SearchCatalogAsync(cancellationToken);
+            (string? cabUrl, string? expectedDigest) = await SearchCatalogAsync(cancellationToken);
 
             if (forceRefresh || !File.Exists(cabPath) ||
                 !await VerifySha256Async(cabPath, expectedDigest, cancellationToken))
@@ -68,8 +71,8 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
     {
         var requestBody = new
         {
-            Products = "PN=Windows.Products.Cab.amd64&V=26200.0.0.0",
-            DeviceAttributes = "DUScan=1;OSVersion=10.0.026200.1"
+            Products = "PN=Windows.Products.Cab.amd64&V=26300.0.0.0",
+            DeviceAttributes = "DUScan=1;OSVersion=10.0.026300.1"
         };
 
         using var jsonContent = new StringContent(
@@ -77,30 +80,30 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
             Encoding.UTF8,
             "application/json");
 
-        using var response = await _httpClient.PostAsync(UpdateServiceUrl, jsonContent, cancellationToken);
+        using HttpResponseMessage response = await _httpClient.PostAsync(UpdateServiceUrl, jsonContent, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(responseStream, cancellationToken: cancellationToken);
-        var root = document.RootElement;
+        await using Stream responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using JsonDocument document = await JsonDocument.ParseAsync(responseStream, cancellationToken: cancellationToken);
+        JsonElement root = document.RootElement;
 
         if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0)
         {
             throw new InvalidOperationException("Windows Update did not return any product catalog.");
         }
 
-        foreach (var result in root.EnumerateArray())
+        foreach (JsonElement result in root.EnumerateArray())
         {
-            if (!result.TryGetProperty("FileLocations", out var fileLocations) ||
+            if (!result.TryGetProperty("FileLocations", out JsonElement fileLocations) ||
                 fileLocations.ValueKind != JsonValueKind.Array ||
                 fileLocations.GetArrayLength() == 0)
             {
                 continue;
             }
 
-            var location = fileLocations[0];
-            var url = location.GetProperty("Url").GetString();
-            var digest = location.GetProperty("Digest").GetString();
+            JsonElement location = fileLocations[0];
+            string? url = location.GetProperty("Url").GetString();
+            string? digest = location.GetProperty("Digest").GetString();
 
             if (!string.IsNullOrWhiteSpace(url) && !string.IsNullOrWhiteSpace(digest))
             {
@@ -116,19 +119,19 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
         string outputPath,
         CancellationToken cancellationToken)
     {
-        var tempPath = outputPath + ".download";
+        string tempPath = outputPath + ".download";
         if (File.Exists(tempPath))
         {
             File.Delete(tempPath);
         }
 
-        using var response = await _httpClient.GetAsync(
+        using HttpResponseMessage response = await _httpClient.GetAsync(
             url,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        await using (var input = await response.Content.ReadAsStreamAsync(cancellationToken))
+        await using (Stream input = await response.Content.ReadAsStreamAsync(cancellationToken))
         await using (var output = new FileStream(
             tempPath,
             FileMode.Create,
@@ -153,9 +156,9 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
             return false;
         }
 
-        await using var stream = File.OpenRead(filePath);
-        var hashBytes = await SHA256.HashDataAsync(stream, cancellationToken);
-        var actualBase64 = Convert.ToBase64String(hashBytes);
+        await using FileStream stream = File.OpenRead(filePath);
+        byte[] hashBytes = await SHA256.HashDataAsync(stream, cancellationToken);
+        string actualBase64 = Convert.ToBase64String(hashBytes);
         return string.Equals(expectedBase64, actualBase64, StringComparison.Ordinal);
     }
 
@@ -164,9 +167,6 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
         string outputPath,
         CancellationToken cancellationToken)
     {
-        var outputDirectory = Path.GetDirectoryName(outputPath)
-            ?? throw new InvalidOperationException("Unable to determine the output directory for products.xml.");
-
         if (File.Exists(outputPath))
         {
             File.Delete(outputPath);
@@ -183,16 +183,16 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
         processStartInfo.ArgumentList.Add(cabPath);
         processStartInfo.ArgumentList.Add(outputPath);
 
-        using var process = Process.Start(processStartInfo)
+        using Process process = Process.Start(processStartInfo)
             ?? throw new InvalidOperationException("Unable to start expand.exe.");
 
-        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        Task<string> errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
 
         await process.WaitForExitAsync(cancellationToken);
 
-        var stdOut = await outputTask;
-        var stdErr = await errorTask;
+        string stdOut = await outputTask;
+        string stdErr = await errorTask;
 
         if (process.ExitCode != 0)
         {
@@ -207,12 +207,12 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
         }
     }
 
-    private static IReadOnlyList<RawFile> ParseProductsXml(string xmlPath)
+    private static List<RawFile> ParseProductsXml(string xmlPath)
     {
         var document = XDocument.Load(xmlPath);
-        var ns = document.Root?.GetDefaultNamespace() ?? XNamespace.None;
+        XNamespace ns = document.Root?.GetDefaultNamespace() ?? XNamespace.None;
 
-        return document.Descendants(ns + "File")
+        return [.. document.Descendants(ns + "File")
             .Select(file => new RawFile(
                 LanguageCode: file.Element(ns + "LanguageCode")?.Value.Trim() ?? string.Empty,
                 Language: file.Element(ns + "Language")?.Value.Trim() ?? string.Empty,
@@ -226,7 +226,7 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
                     file.Element(ns + "Size")?.Value,
                     NumberStyles.Integer,
                     CultureInfo.InvariantCulture,
-                    out var size)
+                    out long size)
                         ? size
                         : 0,
                 IsRetailOnly: string.Equals(
@@ -238,7 +238,6 @@ public sealed class UpdateCatalogService : IUpdateCatalogService
             .OrderBy(file => file.LanguageCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(file => file.Architecture, StringComparer.OrdinalIgnoreCase)
             .ThenBy(file => file.EditionLoc, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(file => file.Edition, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .ThenBy(file => file.Edition, StringComparer.OrdinalIgnoreCase)];
     }
 }

@@ -1,4 +1,6 @@
-namespace WinDownloader.Wim;
+using WinDownloader.Wim.Models;
+
+namespace WinDownloader.Wim.Interfaces;
 
 public interface IWimProcessingService
 {

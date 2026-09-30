@@ -1,6 +1,6 @@
 using ManagedWimLib;
 
-namespace WinDownloader.Wim;
+namespace WinDownloader.Wim.Models;
 
 public sealed record WimExportRequest(
     string SourceImagePath,

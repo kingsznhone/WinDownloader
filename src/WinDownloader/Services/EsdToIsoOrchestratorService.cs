@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Collections.Concurrent;
 using WinDownloader.Interfaces;
 using WinDownloader.Models;
@@ -14,7 +17,7 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
     private readonly ConcurrentDictionary<string, Task> _conversionWorkers = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, EsdToIsoTaskSnapshot> _snapshots = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _shutdownCts = new();
-    private readonly object _workerLock = new();
+    private readonly Lock _workerLock = new();
     private static readonly TimeSpan _conversionSlotPollInterval = TimeSpan.FromMilliseconds(250);
     private const int MaxConcurrentIsoConversions = 1;
     private int _activeConversionSlotCount;
@@ -33,16 +36,18 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
     }
 
     /// <inheritdoc/>
-    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StartAsync(CancellationToken ct) => Task.CompletedTask;
 
     /// <inheritdoc/>
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken ct)
     {
         await _shutdownCts.CancelAsync().ConfigureAwait(false);
 
-        var workers = _conversionWorkers.Values.ToArray();
+        Task[] workers = [.. _conversionWorkers.Values];
         if (workers.Length > 0)
-            await Task.WhenAll(workers).WaitAsync(cancellationToken).ConfigureAwait(false);
+        {
+            await Task.WhenAll(workers).WaitAsync(ct).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc/>
@@ -55,29 +60,37 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
     public event EventHandler? ActiveTaskCountChanged;
 
     /// <inheritdoc/>
-    public Task<TaskOperationResult> ConvertToIsoAsync(DownloadTask task, CancellationToken cancellationToken = default)
+    public Task<TaskOperationResult> ConvertToIsoAsync(DownloadTask task, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(task);
-        cancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
 
         if (task.State != TaskState.Completed)
+        {
             return Task.FromResult(TaskOperationResult.Failure($"Can only convert tasks that are completed, current state is {task.State}."));
+        }
 
-        var esdPath = _pathService.ResolveEsdPath(task);
+        string esdPath = _pathService.ResolveEsdPath(task);
         if (!File.Exists(esdPath))
+        {
             return Task.FromResult(TaskOperationResult.Failure("Local ESD file not found, please re-download before converting."));
+        }
 
         if (File.Exists(_pathService.ResolveIsoPath(task)))
+        {
             return Task.FromResult(TaskOperationResult.Success("ISO file already exists."));
+        }
 
         lock (_workerLock)
         {
             if (_conversionWorkers.ContainsKey(task.Sha256))
+            {
                 return Task.FromResult(TaskOperationResult.Failure("Task is already in the ISO conversion queue."));
+            }
 
             PublishSnapshot(task, CreateSnapshot(task, EsdToIsoTaskState.NotStarted, EsdToIsoStage.Preparing, 0));
 
-            var worker = Task.Run(() => ProcessConversionAsync(task, _shutdownCts.Token));
+            var worker = Task.Run(() => ProcessConversionAsync(task, _shutdownCts.Token), _shutdownCts.Token);
             _conversionWorkers[task.Sha256] = worker;
             _ = worker.ContinueWith(_ => TryRemoveWorker(task.Sha256, worker), TaskScheduler.Default);
         }
@@ -96,7 +109,7 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
     public EsdToIsoTaskSnapshot? GetSnapshot(string sha256)
     {
         ArgumentNullException.ThrowIfNull(sha256);
-        return _snapshots.TryGetValue(sha256, out var snapshot) ? snapshot : null;
+        return _snapshots.TryGetValue(sha256, out EsdToIsoTaskSnapshot? snapshot) ? snapshot : null;
     }
 
     /// <inheritdoc/>
@@ -106,22 +119,24 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
         _snapshots.TryRemove(sha256, out _);
     }
 
-    private async Task ProcessConversionAsync(DownloadTask task, CancellationToken shutdownToken)
+    private async Task ProcessConversionAsync(DownloadTask task, CancellationToken ct)
     {
-        var acquiredSlot = false;
-        var countedActive = false;
+        bool acquiredSlot = false;
+        bool countedActive = false;
         EventHandler<EsdToIsoTaskSnapshot>? progressHandler = null;
 
         try
         {
-            acquiredSlot = await WaitForConversionSlotAsync(task, shutdownToken).ConfigureAwait(false);
+            acquiredSlot = await WaitForConversionSlotAsync(task, ct).ConfigureAwait(false);
             if (!acquiredSlot || task.State != TaskState.Completed)
+            {
                 return;
+            }
 
             countedActive = true;
             IncrementActiveTaskCount();
 
-            var sourceEsdPath = _pathService.ResolveEsdPath(task);
+            string sourceEsdPath = _pathService.ResolveEsdPath(task);
             if (!File.Exists(sourceEsdPath))
             {
                 PublishSnapshot(task, CreateSnapshot(
@@ -149,7 +164,9 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
             progressHandler = (_, snapshot) =>
             {
                 if (string.Equals(snapshot.SourceEsdPath, sourceEsdPath, StringComparison.OrdinalIgnoreCase))
+                {
                     PublishSnapshot(task, snapshot);
+                }
             };
             _isoConversionService.ProgressChanged += progressHandler;
 
@@ -159,25 +176,25 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
                 BuildIsoVolumeLabel(task),
                 KeepIntermediateFiles: false);
 
-            var result = await _isoConversionService.ConvertAsync(request, shutdownToken).ConfigureAwait(false);
+            EsdToIsoResult result = await _isoConversionService.ConvertAsync(request, ct).ConfigureAwait(false);
             if (!result.Succeeded)
             {
                 PublishSnapshot(task, CreateSnapshot(
                     task,
                     EsdToIsoTaskState.Failed,
                     EsdToIsoStage.Failed,
-                    _snapshots.TryGetValue(task.Sha256, out var lastSnapshot) ? lastSnapshot.Progress : 0,
+                    _snapshots.TryGetValue(task.Sha256, out EsdToIsoTaskSnapshot? lastSnapshot) ? lastSnapshot.Progress : 0,
                     errorMessage: result.ErrorMessage ?? "ISO conversion failed.",
                     completedAt: result.CompletedAt));
             }
         }
-        catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             PublishSnapshot(task, CreateSnapshot(
                 task,
                 EsdToIsoTaskState.Canceled,
                 EsdToIsoStage.Failed,
-                _snapshots.TryGetValue(task.Sha256, out var lastSnapshot) ? lastSnapshot.Progress : 0,
+                _snapshots.TryGetValue(task.Sha256, out EsdToIsoTaskSnapshot? lastSnapshot) ? lastSnapshot.Progress : 0,
                 errorMessage: "ISO conversion has been canceled.",
                 completedAt: DateTimeOffset.Now));
         }
@@ -187,34 +204,44 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
                 task,
                 EsdToIsoTaskState.Failed,
                 EsdToIsoStage.Failed,
-                _snapshots.TryGetValue(task.Sha256, out var lastSnapshot) ? lastSnapshot.Progress : 0,
+                _snapshots.TryGetValue(task.Sha256, out EsdToIsoTaskSnapshot? lastSnapshot) ? lastSnapshot.Progress : 0,
                 errorMessage: ex.Message,
                 completedAt: DateTimeOffset.Now));
         }
         finally
         {
             if (progressHandler is not null)
+            {
                 _isoConversionService.ProgressChanged -= progressHandler;
+            }
 
             if (acquiredSlot)
+            {
                 ReleaseConversionSlot();
+            }
 
             if (countedActive)
+            {
                 DecrementActiveTaskCount();
+            }
         }
     }
 
-    private async Task<bool> WaitForConversionSlotAsync(DownloadTask task, CancellationToken shutdownToken)
+    private async Task<bool> WaitForConversionSlotAsync(DownloadTask task, CancellationToken ct)
     {
-        while (!shutdownToken.IsCancellationRequested)
+        while (!ct.IsCancellationRequested)
         {
             if (task.State != TaskState.Completed)
+            {
                 return false;
+            }
 
             if (TryAcquireConversionSlot())
+            {
                 return true;
+            }
 
-            await Task.Delay(_conversionSlotPollInterval, shutdownToken).ConfigureAwait(false);
+            await Task.Delay(_conversionSlotPollInterval, ct).ConfigureAwait(false);
         }
 
         return false;
@@ -224,12 +251,16 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
     {
         while (true)
         {
-            var current = Volatile.Read(ref _activeConversionSlotCount);
+            int current = Volatile.Read(ref _activeConversionSlotCount);
             if (current >= MaxConcurrentIsoConversions)
+            {
                 return false;
+            }
 
             if (Interlocked.CompareExchange(ref _activeConversionSlotCount, current + 1, current) == current)
+            {
                 return true;
+            }
         }
     }
 
@@ -262,7 +293,7 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
         string? errorMessage = null,
         DateTimeOffset? completedAt = null)
     {
-        var startedAt = _snapshots.TryGetValue(task.Sha256, out var existing)
+        DateTimeOffset startedAt = _snapshots.TryGetValue(task.Sha256, out EsdToIsoTaskSnapshot? existing)
             ? existing.StartedAt
             : DateTimeOffset.Now;
 
@@ -282,12 +313,14 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
 
     private static string BuildIsoVolumeLabel(DownloadTask task)
     {
-        var source = Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName);
-        var characters = source.Select(static character =>
-            char.IsLetterOrDigit(character) ? char.ToUpperInvariant(character) : '_').ToArray();
-        var label = new string(characters).Trim('_');
+        string source = Path.GetFileNameWithoutExtension(task.FileGroup.File.FileName);
+        char[] characters = [.. source.Select(static character =>
+            char.IsLetterOrDigit(character) ? char.ToUpperInvariant(character) : '_')];
+        string label = new string(characters).Trim('_');
         if (string.IsNullOrWhiteSpace(label))
+        {
             label = "ESD_ISO";
+        }
 
         return label.Length <= 32 ? label : label[..32];
     }
@@ -299,11 +332,16 @@ public sealed class EsdToIsoOrchestratorService : IEsdToIsoOrchestratorService, 
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
+        {
             return;
+        }
+
         _disposed = true;
 
         if (!_shutdownCts.IsCancellationRequested)
+        {
             await StopAsync(CancellationToken.None).ConfigureAwait(false);
+        }
 
         _shutdownCts.Dispose();
     }

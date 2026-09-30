@@ -1,13 +1,15 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using WinDownloader.Helpers;
 using WinDownloader.Interfaces;
-using WinDownloader.Iso;
 using WinDownloader.Models;
 using WinDownloader.Services;
-using WinDownloader.Wim;
+using WinDownloader.Wim.Models;
 
 namespace WinDownloader.ViewModels;
 
@@ -21,9 +23,8 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     private readonly IEsdToIsoOrchestratorService _isoOrchestrator;
     private readonly IDownloadTaskPathService _pathService;
     private readonly DispatcherQueue _dispatcherQueue;
-    private readonly object _downloadSnapshotLock = new();
-    private readonly object _isoSnapshotLock = new();
-    private string _operationMessage = string.Empty;
+    private readonly Lock _downloadSnapshotLock = new();
+    private readonly Lock _isoSnapshotLock = new();
     private DownloadTaskSnapshot? _pendingDownloadSnapshot;
     private EsdToIsoTaskSnapshot? _pendingIsoSnapshot;
     private bool _downloadSnapshotRefreshQueued;
@@ -31,14 +32,9 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     private TaskState _state;
     private double _progress;
     private long _speedBytesPerSecond;
-    private string _statusText = string.Empty;
-    private string _errorMessage = string.Empty;
     private EsdToIsoTaskSnapshot? _isoSnapshot;
     private double _isoMainProgress;
     private double _isoSubProgress;
-    private bool _isIsoSubProgressIndeterminate;
-    private string _isoMainStatusText = string.Empty;
-    private string _isoSubStatusText = string.Empty;
 
     public DownloadTaskItemViewModel(
         DownloadTask task,
@@ -67,72 +63,73 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     public DownloadTask Task { get; }
 
     public double Progress => double.IsFinite(_progress) ? _progress : 0;
-    public string StatusText => _statusText;
-    public string ErrorMessage => _errorMessage;
+    public string StatusText { get; private set; } = string.Empty;
+    public string ErrorMessage { get; private set; } = string.Empty;
     public double IsoMainProgress => double.IsFinite(_isoMainProgress) ? _isoMainProgress : 0;
     public double IsoSubProgress => double.IsFinite(_isoSubProgress) ? _isoSubProgress : 0;
-    public bool IsIsoSubProgressIndeterminate => _isIsoSubProgressIndeterminate;
-    public string IsoMainStatusText => _isoMainStatusText;
-    public string IsoSubStatusText => _isoSubStatusText;
+    public bool IsIsoSubProgressIndeterminate { get; private set; }
+    public string IsoMainStatusText { get; private set; } = string.Empty;
+    public string IsoSubStatusText { get; private set; } = string.Empty;
 
     public string OperationMessage
     {
-        get => _operationMessage;
-        private set
+        get; private set
         {
-            if (SetProperty(ref _operationMessage, value))
+            if (SetProperty(ref field, value))
+            {
                 OnPropertyChanged(nameof(HasOperationMessage));
+            }
         }
-    }
+    } = string.Empty;
 
     // ── Commands ──────────────────────────────────────────────────────────────
 
     [RelayCommand(CanExecute = nameof(CanPause))]
     private async Task PauseAsync()
     {
-        var result = await _downloadOrchestrator.PauseAsync(Task.Sha256);
+        TaskOperationResult result = await _downloadOrchestrator.PauseAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanResume))]
     private async Task ResumeAsync()
     {
-        var result = await _downloadOrchestrator.ResumeAsync(Task.Sha256);
+        TaskOperationResult result = await _downloadOrchestrator.ResumeAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanCancel))]
     private async Task CancelAsync()
     {
-        var result = await _downloadOrchestrator.CancelAsync(Task.Sha256);
+        TaskOperationResult result = await _downloadOrchestrator.CancelAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private async Task DeleteAsync()
     {
-        var result = await _downloadOrchestrator.DeleteAsync(Task.Sha256);
+        TaskOperationResult result = await _downloadOrchestrator.DeleteAsync(Task.Sha256);
         ApplyOperationResult(result);
     }
 
     [RelayCommand(CanExecute = nameof(CanOpenDirectory))]
     private void OpenDirectory()
     {
-        var directory = _pathService.ResolveDirectory(Task);
+        string directory = _pathService.ResolveDirectory(Task);
         OpenDirectoryPath(directory);
     }
 
     [RelayCommand(CanExecute = nameof(CanConvertToIso))]
     private async Task ConvertToIsoAsync()
     {
-        var isoPath = _pathService.ResolveIsoPath(Task);
+        string isoPath = _pathService.ResolveIsoPath(Task);
         if (File.Exists(isoPath))
         {
             OpenDirectoryPath(Path.GetDirectoryName(isoPath) ?? _pathService.ResolveDirectory(Task));
             return;
         }
 
-        var result = await _isoOrchestrator.ConvertToIsoAsync(Task);
+        TaskOperationResult result = await _isoOrchestrator.ConvertToIsoAsync(Task);
         ApplyOperationResult(result);
     }
 
@@ -165,10 +162,10 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     public bool ShowDownloadProgress => _state is TaskState.Queued or TaskState.Downloading or TaskState.Verifying;
     public bool ShowIsoProgress => _isoSnapshot?.State is EsdToIsoTaskState.NotStarted or EsdToIsoTaskState.Running or EsdToIsoTaskState.Failed or EsdToIsoTaskState.Canceled;
     public bool ShowActionBar => IsDownloadCompleted;
-    public bool HasStatusText => !string.IsNullOrEmpty(_statusText);
-    public bool HasError => IsFailed && !string.IsNullOrEmpty(_errorMessage);
+    public bool HasStatusText => !string.IsNullOrEmpty(StatusText);
+    public bool HasError => IsFailed && !string.IsNullOrEmpty(ErrorMessage);
     public bool HasOperationMessage => !string.IsNullOrWhiteSpace(OperationMessage);
-    public bool HasIsoSubStatusText => !string.IsNullOrWhiteSpace(_isoSubStatusText);
+    public bool HasIsoSubStatusText => !string.IsNullOrWhiteSpace(IsoSubStatusText);
 
     public bool CanPause => _state == TaskState.Downloading;
     public bool CanResume => _state == TaskState.Queued;
@@ -193,14 +190,18 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     private void OnTaskChanged(object? sender, DownloadTaskSnapshot snapshot)
     {
         if (!string.Equals(snapshot.Sha256, Task.Sha256, StringComparison.OrdinalIgnoreCase))
+        {
             return;
+        }
 
         lock (_downloadSnapshotLock)
         {
             _pendingDownloadSnapshot = snapshot;
 
             if (_downloadSnapshotRefreshQueued)
+            {
                 return;
+            }
 
             _downloadSnapshotRefreshQueued = true;
         }
@@ -217,14 +218,18 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     private void OnIsoConversionChanged(object? sender, IsoConversionTaskSnapshot snapshot)
     {
         if (!string.Equals(snapshot.Sha256, Task.Sha256, StringComparison.OrdinalIgnoreCase))
+        {
             return;
+        }
 
         lock (_isoSnapshotLock)
         {
             _pendingIsoSnapshot = snapshot.Snapshot;
 
             if (_isoSnapshotRefreshQueued)
+            {
                 return;
+            }
 
             _isoSnapshotRefreshQueued = true;
         }
@@ -250,7 +255,9 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
         }
 
         if (snapshot is not null)
+        {
             ApplySnapshot(snapshot, notify: true);
+        }
     }
 
     private void ApplyPendingIsoSnapshot()
@@ -269,28 +276,39 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
 
     private void ApplySnapshot(DownloadTaskSnapshot snapshot, bool notify)
     {
-        var lifecycleChanged = _state != snapshot.State;
-        var progressChanged = !AreClose(_progress, snapshot.Progress);
-        var speedChanged = _speedBytesPerSecond != snapshot.SpeedBytesPerSecond;
-        var statusChanged = !string.Equals(_statusText, snapshot.StatusText, StringComparison.Ordinal);
-        var errorMessage = snapshot.ErrorMessage ?? string.Empty;
-        var errorChanged = !string.Equals(_errorMessage, errorMessage, StringComparison.Ordinal);
+        bool lifecycleChanged = _state != snapshot.State;
+        bool progressChanged = !AreClose(_progress, snapshot.Progress);
+        bool speedChanged = _speedBytesPerSecond != snapshot.SpeedBytesPerSecond;
+        bool statusChanged = !string.Equals(StatusText, snapshot.StatusText, StringComparison.Ordinal);
+        string errorMessage = snapshot.ErrorMessage ?? string.Empty;
+        bool errorChanged = !string.Equals(ErrorMessage, errorMessage, StringComparison.Ordinal);
 
         _state = snapshot.State;
         _progress = snapshot.Progress;
         _speedBytesPerSecond = snapshot.SpeedBytesPerSecond;
-        _statusText = snapshot.StatusText;
-        _errorMessage = errorMessage;
+        StatusText = snapshot.StatusText;
+        ErrorMessage = errorMessage;
 
         if (!notify)
+        {
             return;
+        }
 
         if (lifecycleChanged)
+        {
             NotifyLifecyclePropertiesChanged();
+        }
+
         if (progressChanged)
+        {
             OnPropertyChanged(nameof(Progress));
+        }
+
         if (speedChanged)
+        {
             OnPropertyChanged(nameof(SpeedText));
+        }
+
         if (statusChanged)
         {
             OnPropertyChanged(nameof(StatusText));
@@ -343,39 +361,56 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
 
     private void ApplyIsoSnapshot(EsdToIsoTaskSnapshot? snapshot, bool notify)
     {
-        var snapshotChanged = !Equals(_isoSnapshot, snapshot);
-        var mainProgress = snapshot?.Progress ?? 0;
-        var (subProgress, isSubIndeterminate) = CalculateIsoSubProgress(snapshot);
-        var mainStatusText = snapshot is null ? string.Empty : BuildIsoMainStatusText(snapshot);
-        var subStatusText = snapshot is null ? string.Empty : BuildIsoSubStatusText(snapshot);
+        bool snapshotChanged = !Equals(_isoSnapshot, snapshot);
+        double mainProgress = snapshot?.Progress ?? 0;
+        (double subProgress, bool isSubIndeterminate) = CalculateIsoSubProgress(snapshot);
+        string mainStatusText = snapshot is null ? string.Empty : BuildIsoMainStatusText(snapshot);
+        string subStatusText = snapshot is null ? string.Empty : BuildIsoSubStatusText(snapshot);
 
-        var mainProgressChanged = !AreClose(_isoMainProgress, mainProgress);
-        var subProgressChanged = !AreClose(_isoSubProgress, subProgress);
-        var subIndeterminateChanged = _isIsoSubProgressIndeterminate != isSubIndeterminate;
-        var mainTextChanged = !string.Equals(_isoMainStatusText, mainStatusText, StringComparison.Ordinal);
-        var subTextChanged = !string.Equals(_isoSubStatusText, subStatusText, StringComparison.Ordinal);
-        var wasBusy = IsIsoConversionBusy;
+        bool mainProgressChanged = !AreClose(_isoMainProgress, mainProgress);
+        bool subProgressChanged = !AreClose(_isoSubProgress, subProgress);
+        bool subIndeterminateChanged = IsIsoSubProgressIndeterminate != isSubIndeterminate;
+        bool mainTextChanged = !string.Equals(IsoMainStatusText, mainStatusText, StringComparison.Ordinal);
+        bool subTextChanged = !string.Equals(IsoSubStatusText, subStatusText, StringComparison.Ordinal);
+        bool wasBusy = IsIsoConversionBusy;
 
         _isoSnapshot = snapshot;
         _isoMainProgress = mainProgress;
         _isoSubProgress = subProgress;
-        _isIsoSubProgressIndeterminate = isSubIndeterminate;
-        _isoMainStatusText = mainStatusText;
-        _isoSubStatusText = subStatusText;
+        IsIsoSubProgressIndeterminate = isSubIndeterminate;
+        IsoMainStatusText = mainStatusText;
+        IsoSubStatusText = subStatusText;
 
         if (!notify)
+        {
             return;
+        }
 
         if (snapshotChanged)
+        {
             OnPropertyChanged(nameof(ShowIsoProgress));
+        }
+
         if (mainProgressChanged)
+        {
             OnPropertyChanged(nameof(IsoMainProgress));
+        }
+
         if (subProgressChanged)
+        {
             OnPropertyChanged(nameof(IsoSubProgress));
+        }
+
         if (subIndeterminateChanged)
+        {
             OnPropertyChanged(nameof(IsIsoSubProgressIndeterminate));
+        }
+
         if (mainTextChanged)
+        {
             OnPropertyChanged(nameof(IsoMainStatusText));
+        }
+
         if (subTextChanged)
         {
             OnPropertyChanged(nameof(IsoSubStatusText));
@@ -410,23 +445,31 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     private static (double Progress, bool IsIndeterminate) CalculateIsoSubProgress(EsdToIsoTaskSnapshot? snapshot)
     {
         if (snapshot is null)
+        {
             return (0, false);
+        }
 
         if (snapshot.IsoProgress is { } isoProgress)
+        {
             return (Math.Clamp(isoProgress.Percent / 100d, 0, 1), false);
+        }
 
         if (snapshot.WimProgress?.Percent is double wimPercent)
+        {
             return (Math.Clamp(wimPercent / 100d, 0, 1), false);
+        }
 
         if (snapshot.State is EsdToIsoTaskState.NotStarted or EsdToIsoTaskState.Running)
+        {
             return (0, true);
+        }
 
         return (snapshot.State == EsdToIsoTaskState.Completed ? 1 : 0, false);
     }
 
     private static string BuildIsoMainStatusText(EsdToIsoTaskSnapshot snapshot)
     {
-        var stageText = snapshot.State switch
+        string stageText = snapshot.State switch
         {
             EsdToIsoTaskState.NotStarted => StringRes.Get("IsoState_NotStarted"),
             EsdToIsoTaskState.Completed => StringRes.Get("IsoState_Completed"),
@@ -450,13 +493,19 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
     private static string BuildIsoSubStatusText(EsdToIsoTaskSnapshot snapshot)
     {
         if (snapshot.State is EsdToIsoTaskState.Failed or EsdToIsoTaskState.Canceled)
+        {
             return snapshot.ErrorMessage ?? StringRes.Get("IsoSub_ConversionIncomplete");
+        }
 
         if (snapshot.WimProgress is { } wimProgress)
+        {
             return BuildWimProgressText(wimProgress);
+        }
 
         if (snapshot.IsoProgress is { } isoProgress)
+        {
             return string.Format(StringRes.Get("IsoSub_OscdimgWritingFormat"), isoProgress.Percent);
+        }
 
         return snapshot.State switch
         {
@@ -479,8 +528,8 @@ public sealed partial class DownloadTaskItemViewModel : ObservableObject, IDispo
 
     private static string BuildWimProgressText(WimOperationProgress progress)
     {
-        var percentText = progress.Percent is double percent ? $" {percent:0.0}%" : string.Empty;
-        var itemText = string.IsNullOrWhiteSpace(progress.CurrentItem)
+        string percentText = progress.Percent is double percent ? $" {percent:0.0}%" : string.Empty;
+        string itemText = string.IsNullOrWhiteSpace(progress.CurrentItem)
             ? string.Empty
             : $" - {Path.GetFileName(progress.CurrentItem)}";
 

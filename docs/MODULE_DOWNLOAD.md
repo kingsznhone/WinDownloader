@@ -4,17 +4,7 @@
 
 下载模块负责把目录条目变成可持久化、可暂停/恢复、可校验的 ESD 下载任务。它覆盖底层下载、SHA-256 校验、SQLite 任务缓存、下载任务编排和下载状态 UI 事件。
 
-ESD 下载完成后的 ISO 转换由独立模块负责；下载模块只保留必要的边界协作，例如删除已完成任务前检查该任务是否仍在转换中。转换调度、`.staging`、WIM/ISO 服务和转换快照见 [MODULE_CONVERSION.md](MODULE_CONVERSION.md)。
-
-核心职责拆分：
-
-| 职责 | 类型 |
-|------|------|
-| 底层 HTTP 下载 | `IDownloadService` / `DownloadService` |
-| ESD 路径解析 | `IDownloadTaskPathService` / `DownloadTaskPathService` |
-| 下载 + SHA-256 校验 | `IEsdDownloadPipeline` / `EsdDownloadPipeline` |
-| ESD 下载任务编排、UI 事件 | `IDownloadTaskOrchestratorService` / `DownloadTaskOrchestratorService` |
-| SQLite 任务缓存 | `ICacheService` / `CacheService` |
+ISO 转换由 [转换模块](MODULE_CONVERSION.md) 独立管理。
 
 ## 文件清单
 
@@ -35,21 +25,11 @@ ESD 下载完成后的 ISO 转换由独立模块负责；下载模块只保留�
 
 ## DownloadService
 
-```csharp
-Task DownloadAsync(
-    string url,
-    string destinationPath,
-    IProgress<DownloadProgress> progress,
-    CancellationToken cancellationToken = default);
-```
-
-实现要点：
-
-- 使用 Downloader NuGet。
 - `DownloadService` 可作为 Singleton 注册；每次 `DownloadAsync` 都会创建独立的 `Downloader.DownloadService` 实例。
 - 下载配置来自 `IAppSettings`：`DownloadChunkCount`、`DownloadParallelCount`。
 - `EnableAutoResumeDownload = true`，暂停后再次下载可使用同一路径续传。
 - 通过 `CancellationToken.Register` 调用底层 `CancelAsync()`。
+- 每次下载独立维护进度节流状态。
 
 ## DownloadTaskPathService
 
@@ -61,7 +41,7 @@ ESD:  {目录}\{FileNameWithoutExtension}.esd
 临时: {ESD}.download
 ```
 
-下载、打开目录、删除文件逻辑都应通过 `IDownloadTaskPathService` 获取路径，避免把路径拼接散落在模型或 UI 中。ISO 和 `.staging` 路径同样由该服务解析，但属于转换模块的消费面，见 [MODULE_CONVERSION.md](MODULE_CONVERSION.md)。
+下载、打开目录和删除文件使用同一套路径解析；ISO 路径见 [转换模块](MODULE_CONVERSION.md#路径规则)。
 
 ## EsdDownloadPipeline
 
@@ -100,10 +80,9 @@ CREATE TABLE IF NOT EXISTS DownloadTasks (
 
 - 数据库路径：`%LocalAppData%\WindowsImageDownloader\cache.db`。
 - `RequiredColumns` 用于检测 schema 是否兼容。
-- schema 不兼容或数据库损坏时自动删除重建，最多重试一次。
+- schema 不兼容或数据库损坏时删除重建，最多重试一次，任务历史会丢失；不做旧 schema 迁移。
 - `RawFileGroup` 以 JSON 存储原始目录文件组，包含代表 `RawFile` 和完整 editions 列表。
 - `Progress`、`SpeedBytesPerSecond`、`StatusText` 是运行时 UI 状态，不持久化。
-- 开发期 schema 重构不做旧平铺列迁移；旧缓存会按不兼容 schema 处理并重建。
 
 ## DownloadTaskOrchestratorService
 
@@ -120,19 +99,6 @@ Queued
 取消/删除 → 从缓存和 UI 集合移除
 ```
 
-### 主要 API
-
-```csharp
-Task<TaskOperationResult> EnqueueAsync(DownloadTask task, CancellationToken ct = default);
-Task RequeueAsync(string sha256, CancellationToken ct = default);
-Task<TaskOperationResult> PauseAsync(string sha256, CancellationToken ct = default);
-Task<TaskOperationResult> ResumeAsync(string sha256, CancellationToken ct = default);
-Task<TaskOperationResult> CancelAsync(string sha256, CancellationToken ct = default);
-Task<TaskOperationResult> DeleteAsync(string sha256, CancellationToken ct = default);
-IReadOnlyList<DownloadTask> Tasks { get; }
-int ActiveTaskCount { get; }
-```
-
 ### 行为
 
 | 操作 | 行为 |
@@ -144,6 +110,8 @@ int ActiveTaskCount { get; }
 | `DeleteAsync` | 仅允许删除 `Completed` 且没有 ISO 转换中的任务，同时删除已校验 ESD 文件 |
 | `RequeueAsync` | 重置进度和错误状态，从头重新下载 |
 
+worker 在暂停、校验失败或下载失败时使用 `CancellationToken.None` 写入最终状态，避免已取消的下载令牌阻断缓存更新。用户取消并移除的任务不会在这些异常分支重新写入；应用关闭引发的取消仍留待下次启动恢复。
+
 ### 启动恢复
 
 `StartAsync` 从 SQLite 加载任务：
@@ -154,8 +122,6 @@ int ActiveTaskCount { get; }
 ## 与转换模块的边界
 
 下载完成后不会自动转换 ISO；用户必须在下载任务项中手动触发转换。转换请求、固定单并发、`.staging` 清理和转换进度见 [MODULE_CONVERSION.md](MODULE_CONVERSION.md)。
-
-下载模块与转换模块只有两个直接协作点：
 
 - `DeleteAsync` 删除已完成 ESD 前调用 `IEsdToIsoOrchestratorService.IsConversionQueuedOrRunning()`，避免删除正在转换的源文件。
 - 下载页徽标由 `DownloadPageViewModel` 聚合下载 active count 和转换 active count，下载模块本身只暴露下载 worker 计数。
@@ -169,11 +135,9 @@ int ActiveTaskCount { get; }
 | `DownloadTaskOrchestratorService.TaskChanged` | 可能来自后台线程，使用 `DownloadTaskSnapshot` 携带下载状态 |
 | `DownloadTaskOrchestratorService.ActiveTaskCountChanged` | 下载 worker active 计数变化时触发 |
 
-`DownloadTaskItemViewModel` 会合并下载快照，并通过 `DispatcherQueue.TryEnqueue` 在 UI 线程更新绑定属性。ISO 转换快照由独立转换事件传递，见 [MODULE_CONVERSION.md](MODULE_CONVERSION.md)。
+快照合并和 UI 线程更新见 [UI 模块](MODULE_UI.md#downloadtaskitemviewmodel)。
 
 ## 注意事项
 
 - `MaxConcurrentDownloads` 在下载任务准备启动时读取；调低不会中断已运行下载，但会限制后续任务启动。
-- `DownloadService` 内部底层 Downloader 实例不可跨下载复用；当前包装器每次调用都会新建实例。
-- ISO 转换固定单并发，且 CPU/IO 密集；不要把转换并发或转换状态塞回下载模块。
 - 下载任务 schema 不保存 ISO 转换状态；不要直接给 SQLite 增加转换字段，除非先设计恢复语义。

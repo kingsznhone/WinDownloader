@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.CommandLine;
 using System.Diagnostics;
 using System.Text;
@@ -5,7 +8,8 @@ using ManagedWimLib;
 using POC.Models;
 using POC.Services;
 using WinDownloader.Iso;
-using WinDownloader.Wim;
+using WinDownloader.Iso.Models;
+using WinDownloader.Wim.Services;
 
 namespace POC;
 
@@ -72,45 +76,45 @@ internal static class Program
             isoOnlyOption
         };
 
-        rootCommand.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
+        rootCommand.SetAction(async (parseResult, cancellationToken) =>
         {
-            var source = parseResult.GetValue(sourceOption)!;
-            var outputRoot = parseResult.GetValue(outputRootOption);
-            var volumeLabel = parseResult.GetValue(volumeLabelOption)!;
-            var keepIntermediateFiles = !parseResult.GetValue(deleteIntermediateOption);
-            var installCompression = parseResult.GetValue(installCompressionOption);
-            var recompressInstallImage = parseResult.GetValue(recompressInstallImageOption) ||
+            string source = parseResult.GetValue(sourceOption)!;
+            string? outputRoot = parseResult.GetValue(outputRootOption);
+            string volumeLabel = parseResult.GetValue(volumeLabelOption)!;
+            bool keepIntermediateFiles = !parseResult.GetValue(deleteIntermediateOption);
+            CompressionType installCompression = parseResult.GetValue(installCompressionOption);
+            bool recompressInstallImage = parseResult.GetValue(recompressInstallImageOption) ||
                 installCompression != CompressionType.LZMS ||
                 !parseResult.GetValue(reuseInstallResourcesOption);
-            var reuseInstallResources = !recompressInstallImage;
-            var isoOnly = parseResult.GetValue(isoOnlyOption);
+            bool reuseInstallResources = !recompressInstallImage;
+            bool isoOnly = parseResult.GetValue(isoOnlyOption);
 
-            var sourcePath = Path.GetFullPath(source);
-            var resolvedStagingRoot = string.IsNullOrWhiteSpace(outputRoot)
+            string sourcePath = Path.GetFullPath(source);
+            string resolvedStagingRoot = string.IsNullOrWhiteSpace(outputRoot)
                 ? Path.Combine(Path.GetDirectoryName(sourcePath) ?? Environment.CurrentDirectory, "poc-iso-staging")
                 : Path.GetFullPath(outputRoot);
             Directory.CreateDirectory(resolvedStagingRoot);
 
-            var consoleLogPath = Path.Combine(
+            string consoleLogPath = Path.Combine(
                 resolvedStagingRoot,
                 $"console-{Path.GetFileNameWithoutExtension(sourcePath)}-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.log");
 
             using var consoleLog = ConsoleLogScope.Start(consoleLogPath);
 
             using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
+            void cancelHandler(object? _, ConsoleCancelEventArgs eventArgs)
             {
                 eventArgs.Cancel = true;
                 linkedCancellation.Cancel();
-            };
+            }
             Console.CancelKeyPress += cancelHandler;
 
             try
             {
                 if (isoOnly)
                 {
-                    var stagingDirectory = Path.Combine(resolvedStagingRoot, "staging");
-                    var isoPath = Path.Combine(
+                    string stagingDirectory = Path.Combine(resolvedStagingRoot, "staging");
+                    string isoPath = Path.Combine(
                         Path.GetDirectoryName(sourcePath)!,
                         Path.GetFileNameWithoutExtension(sourcePath) + ".iso");
 
@@ -129,12 +133,12 @@ internal static class Program
                     {
                         OnProgress = p =>
                         {
-                            var elapsed = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+                            string elapsed = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
                             Console.WriteLine($"{elapsed} {p.Percent,5:0.0}% CreatingIso");
                         }
                     };
 
-                    var isoResult = await isoService.CreateIsoAsync(isoRequest, linkedCancellation.Token).ConfigureAwait(false);
+                    IsoCreationResult isoResult = await isoService.CreateIsoAsync(isoRequest, linkedCancellation.Token).ConfigureAwait(false);
                     stopwatch.Stop();
 
                     Console.WriteLine();
@@ -142,13 +146,18 @@ internal static class Program
                     Console.WriteLine($"ISO: {isoResult.OutputIsoPath}");
                     Console.WriteLine($"Duration: {isoResult.Duration}");
                     if (!isoResult.Succeeded)
+                    {
                         Console.Error.WriteLine($"Error: {isoResult.ErrorMessage}");
-                    foreach (var w in isoResult.Warnings)
+                    }
+
+                    foreach (string w in isoResult.Warnings)
+                    {
                         Console.WriteLine($"Warning: {w}");
+                    }
 
                     // Diagnostic: dump raw oscdimg stdout to reveal control characters
-                    var raw = isoResult.StandardOutput;
-                    var rawErr = isoResult.StandardError;
+                    string raw = isoResult.StandardOutput;
+                    string rawErr = isoResult.StandardError;
                     Console.WriteLine();
                     Console.WriteLine($"--- oscdimg stdout ({raw.Length} chars) ---");
                     Console.WriteLine(raw.Replace("\b", "[BS]").Replace("\r", "[CR]").Replace("\n", "[LF]\n"));
@@ -159,21 +168,27 @@ internal static class Program
                     for (int i = 0; i < Math.Min(raw.Length, 256); i++)
                     {
                         Console.Write($"{(int)raw[i]:X2} ");
-                        if ((i + 1) % 16 == 0) Console.WriteLine();
+                        if ((i + 1) % 16 == 0)
+                        {
+                            Console.WriteLine();
+                        }
                     }
                     Console.WriteLine();
                     Console.WriteLine("--- hex dump stderr (first 256 chars) ---");
                     for (int i = 0; i < Math.Min(rawErr.Length, 256); i++)
                     {
                         Console.Write($"{(int)rawErr[i]:X2} ");
-                        if ((i + 1) % 16 == 0) Console.WriteLine();
+                        if ((i + 1) % 16 == 0)
+                        {
+                            Console.WriteLine();
+                        }
                     }
                     Console.WriteLine();
 
                     return isoResult.Succeeded ? 0 : 1;
                 }
 
-                var outputIsoPath = Path.Combine(
+                string outputIsoPath = Path.Combine(
                     Path.GetDirectoryName(sourcePath)!,
                     Path.GetFileNameWithoutExtension(sourcePath) + ".iso");
 
@@ -189,7 +204,7 @@ internal static class Program
                 var conversionService = new CliConversionService(wimService, new OscdimgIsoCreationService());
                 var progressReporter = new Progress<CliConversionProgress>(OnProgressChanged);
 
-                var result = await conversionService.ConvertAsync(
+                CliConversionResult result = await conversionService.ConvertAsync(
                     sourcePath,
                     Path.Combine(resolvedStagingRoot, "staging"),
                     outputIsoPath,
@@ -247,16 +262,22 @@ internal static class Program
         PrintFileSize("ISO", result.IsoPath);
 
         if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+        {
             Console.Error.WriteLine($"Error: {result.ErrorMessage}");
+        }
 
-        foreach (var warning in result.Warnings)
+        foreach (string warning in result.Warnings)
+        {
             Console.WriteLine($"Warning: {warning}");
+        }
     }
 
     private static void PrintFileSize(string label, string path)
     {
         if (!File.Exists(path))
+        {
             return;
+        }
 
         Console.WriteLine($"{label} size: {FormatBytes((ulong)new FileInfo(path).Length)}");
     }
@@ -279,8 +300,8 @@ internal static class Program
 
         public static ConsoleLogScope Start(string path)
         {
-            var originalOutput = Console.Out;
-            var originalError = Console.Error;
+            TextWriter originalOutput = Console.Out;
+            TextWriter originalError = Console.Error;
             var streamWriter = TextWriter.Synchronized(new StreamWriter(path, append: false, Encoding.UTF8)
             {
                 AutoFlush = true
@@ -299,16 +320,10 @@ internal static class Program
         }
     }
 
-    private sealed class TeeTextWriter : TextWriter
+    private sealed class TeeTextWriter(TextWriter first, TextWriter second) : TextWriter
     {
-        private readonly TextWriter _first;
-        private readonly TextWriter _second;
-
-        public TeeTextWriter(TextWriter first, TextWriter second)
-        {
-            _first = first;
-            _second = second;
-        }
+        private readonly TextWriter _first = first;
+        private readonly TextWriter _second = second;
 
         public override Encoding Encoding => _first.Encoding;
 

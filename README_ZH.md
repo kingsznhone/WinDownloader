@@ -13,7 +13,7 @@
 
 一个基于 **WinUI 3** 和 **.NET 10** 的 Windows 安装映像下载工具。从 **Microsoft Update Catalog** 获取产品目录、筛选 ESD 文件、多线程断点续传下载、SHA-256 校验、SQLite 任务持久化，并支持将下载完成的 ESD 文件转换为可启动的 ISO 映像。
 
-> 💡 **提示：** 本项目是一个**试验场**，代码库中大量内容由 **AI coding Agent** 生成和迭代。代码中可能存在实验性的模式、偶尔的过度设计以及随处可见的 AI 生成代码。欢迎贡献和清理！
+> 本项目由 AI coding Agent 辅助开发，仍处于实验阶段，使用前应审查和验证相关改动。
 
 ---
 
@@ -28,7 +28,6 @@
   - 复用官方 solid LZMS 压缩格式生成 `sources\install.wim`
   - 使用内置的 **oscdimg** 工具创建最终 ISO（`WinDownloader.Iso`）
 - **🌐 本地化支持** — 支持 **en-US** 和 **zh-CN**，基于 MRT Core 资源系统，切换语言后重启生效。
-- **🎨 现代化 WinUI 3 界面** — 基于 Windows App SDK 2.0，包含导航视图、设置页面和实时下载进度显示。
 
 ---
 
@@ -44,8 +43,6 @@
 
 ### 使用环境（运行已发布版本）
 
-运行已发布版本需要：
-
 - **Windows 11 x64**（build 26100 或更高版本）
 - 可访问网络，用于获取 Microsoft Update Catalog 产品目录和下载 ESD 文件
 - 足够的磁盘空间，用于保存 ESD 文件和生成 ISO 映像
@@ -53,8 +50,6 @@
 发布版本采用 Windows App SDK self-contained 部署，用户**不需要**额外安装 .NET 10 SDK 或 Visual Studio。请将完整的发布目录复制到目标计算机，然后运行 `WinDownloader.exe`。
 
 ### 开发环境
-
-构建或修改本项目需要准备：
 
 - **Windows 11 x64**（build 26100 或更高版本）
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
@@ -112,36 +107,9 @@ src/
 
 ---
 
-## 🧱 架构概览
-
-| 层级          | 技术                                                       |
-| ------------- | ---------------------------------------------------------- |
-| UI 框架       | WinUI 3（`Microsoft.UI.Xaml`）                             |
-| 运行时        | .NET 10 + Windows App SDK 2.0                              |
-| MVVM          | CommunityToolkit.Mvvm                                      |
-| DI / 生命周期 | Microsoft.Extensions.Hosting + DI                          |
-| 下载引擎      | [Downloader](https://github.com/bezzad/Downloader) NuGet   |
-| WIM 处理      | [ManagedWimLib](https://github.com/kingseva/ManagedWimLib) |
-| ISO 创建      | 内置 `oscdimg.exe`                                         |
-| 数据库        | Microsoft.Data.Sqlite                                      |
-| 设置存储      | JSON 文件                                                  |
-
-### 数据流
-
-```
-选择页面
-  → 从 Microsoft Update Catalog 获取目录
-  → 解析 products.xml → RawFile 列表
-  → 用户选择并排队下载
-  → DownloadTaskOrchestratorService 调度任务
-  → EsdDownloadPipeline 下载 + SHA-256 校验
-  → SQLite 持久化任务状态
-  → （可选）EsdToIsoConversionService 将 ESD 转换为 ISO
-```
-
----
-
 ## 📚 文档
+
+编码约束从 [AGENTS.md](AGENTS.md) 开始，系统总览见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 | 文档                                                       | 说明                                |
 | ---------------------------------------------------------- | ----------------------------------- |
@@ -164,27 +132,17 @@ src/
 
 ## 🧪 概念验证（POC）
 
-`src/POC` 目录包含一个控制台应用，直接引用 `WinDownloader.Wim` 和 `WinDownloader.Iso`，用于独立验证和实验：
-
-- 独立测试 WIM/ISO 转换逻辑
-- 实验进度映射和压缩参数
-- 验证 oscdimg 行为
+控制台宿主用于脱离 WinUI 验证 WIM/ISO 转换、压缩和进度。参数与输出路径见 [src/POC/README.md](src/POC/README.md)。
 
 ```powershell
-dotnet run --project .\src\POC\POC.csproj
+dotnet run --project .\src\POC\POC.csproj -- --help
 ```
 
 ---
 
 ## 🤝 贡献指南
 
-欢迎贡献代码！请先阅读我们的[贡献指南](docs/WORKFLOW.md)。
-
-1. Fork 本仓库
-2. 创建功能分支（`git checkout -b feature/amazing-feature`）
-3. 提交更改（`git commit -m '添加某个很棒的功能'`）
-4. 推送到分支（`git push origin feature/amazing-feature`）
-5. 发起 Pull Request
+按 [docs/WORKFLOW.md](docs/WORKFLOW.md) 修改，在 Pull Request 中附上验证结果并同步相关文档，避免无关改动。
 
 ---
 

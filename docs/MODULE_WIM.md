@@ -9,7 +9,6 @@
 | 属性 | 值 |
 |------|------|
 | 项目文件 | `src/WinDownloader.Wim/WinDownloader.Wim.csproj` |
-| 命名空间 | `WinDownloader.Wim` |
 | 目标框架 | `net10.0` |
 | 主要依赖 | `ManagedWimLib` NuGet |
 
@@ -32,30 +31,20 @@ src/WinDownloader.Wim/
 
 ## IWimProcessingService
 
-```csharp
-// 读取 WIM/ESD 中所有镜像的元数据
-Task<IReadOnlyList<WimImageInfo>> GetImagesAsync(
-    string imagePath,
-    CancellationToken cancellationToken = default);
+| 方法 | 输入与行为 |
+|------|------------|
+| `GetImagesAsync` | WIM/ESD 路径，返回所有映像元数据 |
+| `ExtractImageAsync` | `WimExtractRequest`，提取单个映像到目录 |
+| `ExportImagesAsync` | `WimExportRequest`，批量导出到新 WIM |
 
-// 提取单个镜像到目标目录
-Task ExtractImageAsync(
-    WimExtractRequest request,
-    Action<WimOperationProgress>? progress = null,
-    CancellationToken cancellationToken = default);
-
-// 将一组镜像导出到新的 WIM 文件
-Task ExportImagesAsync(
-    WimExportRequest request,
-    Action<WimOperationProgress>? progress = null,
-    CancellationToken cancellationToken = default);
-```
+所有方法支持取消；提取和导出通过 `Action<WimOperationProgress>` 回调报告进度。
 
 ## WimProcessingService
 
 - **只能作为 Singleton 注册**。内部持有 ManagedWimLib 全局初始化状态，并使用 `SemaphoreSlim(1, 1)` 保证同一时间只有一个 WIM 操作执行。
 - 构造时自动在 `AppContext.BaseDirectory` 查找 `libwim-15.dll`：先查 `runtimes/win-x64/native/`（Debug / 非自包含），再查根目录（发布自包含）。找不到时把错误延迟到第一次操作，以便宿主应用正常启动。
-- `Dispose()` 调用 `ManagedWim.TryGlobalCleanup()`，释放全局 WIM 库资源。
+- 操作获取信号量后在 `Task.Run` 中同步执行，取消通过 WimLib 回调传入。
+- Host 释放服务时调用 `Dispose()` / `ManagedWim.TryGlobalCleanup()` 清理全局状态。
 
 ## 模型
 
@@ -64,12 +53,9 @@ Task ExportImagesAsync(
 | 字段 | 说明 |
 |------|------|
 | `Index` | WIM 中的 1-based 镜像索引 |
-| `Name` | 镜像名称 |
-| `DisplayName` | 显示名称（优先于 Name） |
-| `EditionId` | 版本标识（如 `Core`、`Professional`） |
-| `InstallationType` | 安装类型（如 `Client`、`Server`） |
-| `Architecture` | 处理器架构字符串 |
-| `DefaultLanguage` | 默认语言代码 |
+| `Name` / `DisplayName` | 内部名称与显示名称 |
+| `EditionId` / `InstallationType` | 系统版本标识与安装类型 |
+| `Architecture` / `DefaultLanguage` | 架构与默认语言 |
 | `TotalBytes` | 展开后占用字节数 |
 | `IsBootable` | 是否为可启动镜像 |
 | `Title` | 计算属性：DisplayName → Name → `Image {Index}` |
@@ -83,8 +69,6 @@ record WimExtractRequest(
     int ImageIndex,           // 1-based
     string DestinationDirectory);
 ```
-
-提取单个镜像到目标目录（index 1-based）。
 
 ### WimExportRequest
 
@@ -101,7 +85,7 @@ record WimExportRequest(
     uint OutputPackChunkSize = 0);
 ```
 
-将一组镜像从源 WIM 导出到新 WIM，支持指定压缩算法和输出块大小。
+共享库默认重压为 LZX；ESD→ISO 流水线生成 `install.wim` 时显式使用 LZMS、`Recompress=false`，复用官方 solid 资源。
 
 ### WimImageExportItem
 
@@ -115,19 +99,7 @@ record WimImageExportItem(
 
 ### WimOperationProgress / WimOperationStage
 
-```csharp
-record WimOperationProgress(
-    WimOperationStage Stage,
-    double? Percent,
-    ulong? CompletedBytes,
-    ulong? TotalBytes,
-    string? CurrentItem);
-
-enum WimOperationStage
-{
-    Opening, Extracting, Writing, Verifying, Metadata, Completed, Other
-}
-```
+包含阶段、可空百分比（0-100）、已完成/总字节数及当前项。阶段为 `Opening`、`Extracting`、`Writing`、`Verifying`、`Metadata`、`Completed`、`Other`；并非每个阶段都有百分比。
 
 ## ESD 镜像分布约定
 
@@ -140,16 +112,5 @@ Windows ESD 文件的镜像索引约定（转换流水线消费方依赖此布�
 | 3 | Windows Setup PE（写入 `boot.wim` 镜像 2，可启动） |
 | 4..n | Windows 安装版本（写入 `install.wim`） |
 
-## DI 注册
+流水线实现见 [转换模块](MODULE_CONVERSION.md#esdtoisoconversionservice)。
 
-```text
-IWimProcessingService    Singleton    WimProcessingService
-```
-
-`WimProcessingService` 是 `IDisposable`；Host 关闭时 DI 容器负责调用 `Dispose()`。
-
-## 注意事项
-
-- 不可多实例：ManagedWimLib 是全局状态库，多个 `WimProcessingService` 实例会引发冲突。
-- 所有操作先获取 `_operationLock` 再在 `Task.Run` 中同步执行；`CancellationToken` 通过 WimLib 回调机制透传。
-- `ExportImagesAsync` 在 ESD→ISO 流水线中被调用两次：第一次导出 image 2+3 生成 `boot.wim`，第二次导出 image 4..n 生成 `install.wim`。默认 `install.wim` 使用 `Recompress=false`，直接复用官方 solid LZMS 资源（快速路径）；若需重压缩可设 `Recompress=true`。

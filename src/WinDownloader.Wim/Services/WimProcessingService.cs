@@ -1,7 +1,12 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using ManagedWimLib;
+using WinDownloader.Wim.Interfaces;
+using WinDownloader.Wim.Models;
 using ManagedWim = ManagedWimLib.Wim;
 
-namespace WinDownloader.Wim;
+namespace WinDownloader.Wim.Services;
 
 /// <summary>
 /// Singleton Only - 该服务内部维护了一个全局的 WIM 库实例，并使用信号量来确保同一时间只有一个操作在进行，以避免线程安全问题。
@@ -17,7 +22,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         // NuGet places the native library at different locations depending on build type:
         // - Debug / non-self-contained: runtimes/win-x64/native/libwim-15.dll
         // - Self-contained / published (runtimes flattened): libwim-15.dll at the output root
-        var nativeLibraryPath =
+        string? nativeLibraryPath =
             TryFindNativeLibrary("runtimes", "win-x64", "native", "libwim-15.dll")
             ?? TryFindNativeLibrary("libwim-15.dll");
 
@@ -34,21 +39,26 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
 
     private static string? TryFindNativeLibrary(params string[] pathSegments)
     {
-        var path = Path.Combine([AppContext.BaseDirectory, .. pathSegments]);
+        string path = Path.Combine([AppContext.BaseDirectory, .. pathSegments]);
         return File.Exists(path) ? path : null;
     }
 
     private void ThrowIfUnavailable()
     {
         if (_initErrorMessage is not null)
+        {
             throw new PlatformNotSupportedException(_initErrorMessage);
+        }
     }
 
     public async Task<IReadOnlyList<WimImageInfo>> GetImagesAsync(string imagePath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(imagePath, nameof(imagePath));
         if (!File.Exists(imagePath))
+        {
             throw new FileNotFoundException($"File not found: {imagePath}", imagePath);
+        }
+
         ThrowIfDisposed();
         ThrowIfUnavailable();
 
@@ -61,10 +71,10 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
 
                 using var wim = ManagedWim.OpenWim(imagePath, OpenFlags.None);
-                var wimInfo = wim.GetWimInfo();
+                WimInfo wimInfo = wim.GetWimInfo();
                 var images = new List<WimImageInfo>((int)wimInfo.ImageCount);
 
-                for (var index = 1; index <= wimInfo.ImageCount; index++)
+                for (int index = 1; index <= wimInfo.ImageCount; index++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     images.Add(GetImageInfo(wim, wimInfo.BootIndex, index));
@@ -87,9 +97,15 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SourceImagePath, nameof(request.SourceImagePath));
         if (!File.Exists(request.SourceImagePath))
+        {
             throw new FileNotFoundException($"File not found: {request.SourceImagePath}", request.SourceImagePath);
+        }
+
         if (request.ImageIndex < 1)
-            throw new ArgumentOutOfRangeException(nameof(request.ImageIndex), request.ImageIndex, "WIM image index starts from 1.");
+        {
+            throw new ArgumentOutOfRangeException(nameof(request), request.ImageIndex, "WIM image index starts from 1.");
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationDirectory, nameof(request.DestinationDirectory));
 
         ThrowIfDisposed();
@@ -104,7 +120,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                 Directory.CreateDirectory(request.DestinationDirectory);
 
                 using var wim = ManagedWim.OpenWim(request.SourceImagePath, OpenFlags.None);
-                var callback = CreateProgressCallback(progress, cancellationToken);
+                ProgressCallback? callback = CreateProgressCallback(progress, cancellationToken);
                 if (callback is not null)
                 {
                     wim.RegisterCallback(callback);
@@ -127,12 +143,15 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SourceImagePath, nameof(request.SourceImagePath));
         if (!File.Exists(request.SourceImagePath))
+        {
             throw new FileNotFoundException($"File not found: {request.SourceImagePath}", request.SourceImagePath);
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DestinationImagePath, nameof(request.DestinationImagePath));
 
         if (request.Images.Count == 0)
         {
-            throw new ArgumentException("At least one image is required for export.", nameof(request.Images));
+            throw new ArgumentException("At least one image is required for export.", nameof(request));
         }
 
         ThrowIfDisposed();
@@ -145,7 +164,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
             {
                 ct.ThrowIfCancellationRequested();
 
-                var destinationDirectory = Path.GetDirectoryName(request.DestinationImagePath);
+                string? destinationDirectory = Path.GetDirectoryName(request.DestinationImagePath);
                 if (!string.IsNullOrWhiteSpace(destinationDirectory))
                 {
                     Directory.CreateDirectory(destinationDirectory);
@@ -156,15 +175,20 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                     File.Delete(request.DestinationImagePath);
                 }
 
-                var callback = CreateProgressCallback(progress, ct);
+                ProgressCallback? callback = CreateProgressCallback(progress, ct);
                 using var sourceWim = ManagedWim.OpenWim(request.SourceImagePath, OpenFlags.None);
                 using var destinationWim = ManagedWim.CreateNewWim(request.Compression);
                 destinationWim.SetOutputCompressionType(request.Compression);
                 destinationWim.SetOutputPackCompressionType(request.Compression);
                 if (request.OutputChunkSize > 0)
+                {
                     destinationWim.SetOutputChunkSize(request.OutputChunkSize);
+                }
+
                 if (request.OutputPackChunkSize > 0)
+                {
                     destinationWim.SetOutputPackChunkSize(request.OutputPackChunkSize);
+                }
 
                 if (callback is not null)
                 {
@@ -172,7 +196,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                     destinationWim.RegisterCallback(callback);
                 }
 
-                foreach (var image in request.Images)
+                foreach (WimImageExportItem image in request.Images)
                 {
                     ct.ThrowIfCancellationRequested();
                     sourceWim.ExportImage(
@@ -190,10 +214,22 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
                         image.ImageName));
                 }
 
-                var writeFlags = WriteFlags.None;
-                if (request.CheckIntegrity) writeFlags |= WriteFlags.CheckIntegrity;
-                if (request.Recompress) writeFlags |= WriteFlags.Recompress;
-                if (request.Solid) writeFlags |= WriteFlags.Solid;
+                WriteFlags writeFlags = WriteFlags.None;
+                if (request.CheckIntegrity)
+                {
+                    writeFlags |= WriteFlags.CheckIntegrity;
+                }
+
+                if (request.Recompress)
+                {
+                    writeFlags |= WriteFlags.Recompress;
+                }
+
+                if (request.Solid)
+                {
+                    writeFlags |= WriteFlags.Solid;
+                }
+
                 destinationWim.Write(request.DestinationImagePath, ManagedWim.AllImages, writeFlags, 0);
                 progress?.Invoke(new WimOperationProgress(WimOperationStage.Completed, 100, null, null, request.DestinationImagePath));
             }, ct);
@@ -207,18 +243,22 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
+        {
             return;
+        }
 
         _operationLock.Dispose();
         if (_initErrorMessage is null)
+        {
             ManagedWim.TryGlobalCleanup();
+        }
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_isDisposed != 0, this);
 
     private static WimImageInfo GetImageInfo(ManagedWim wim, uint bootIndex, int index)
     {
-        var displayName = wim.GetImageProperty(index, "DISPLAYNAME")
+        string displayName = wim.GetImageProperty(index, "DISPLAYNAME")
             ?? wim.GetImageProperty(index, "NAME")
             ?? string.Empty;
 
@@ -231,7 +271,7 @@ public sealed class WimProcessingService : IWimProcessingService, IDisposable
             wim.GetImageProperty(index, "WINDOWS/INSTALLATIONTYPE") ?? string.Empty,
             wim.GetImageProperty(index, "WINDOWS/ARCH") ?? string.Empty,
             wim.GetImageProperty(index, "WINDOWS/LANGUAGES/DEFAULT") ?? string.Empty,
-            long.TryParse(wim.GetImageProperty(index, "TOTALBYTES"), out var totalBytes) ? totalBytes : 0,
+            long.TryParse(wim.GetImageProperty(index, "TOTALBYTES"), out long totalBytes) ? totalBytes : 0,
             bootIndex == index);
     }
 

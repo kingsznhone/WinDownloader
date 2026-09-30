@@ -75,8 +75,8 @@ public sealed class CacheService : ICacheService
     {
         try
         {
-            await using var conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
-            await using var cmd = conn.CreateCommand();
+            await using SqliteConnection conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
+            await using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = CreateTableSql;
             await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
@@ -93,9 +93,9 @@ public sealed class CacheService : ICacheService
 
     private static async Task<bool> HasRequiredColumnsAsync(SqliteConnection conn, CancellationToken cancellationToken)
     {
-        await using var cmd = conn.CreateCommand();
+        await using SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = "PRAGMA table_info(DownloadTasks);";
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteDataReader reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
 
         var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -109,8 +109,8 @@ public sealed class CacheService : ICacheService
     {
         ArgumentNullException.ThrowIfNull(task);
 
-        await using var conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var cmd = conn.CreateCommand();
+        await using SqliteConnection conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteCommand cmd = conn.CreateCommand();
 
         cmd.CommandText = """
             INSERT INTO DownloadTasks
@@ -128,8 +128,8 @@ public sealed class CacheService : ICacheService
     {
         ArgumentNullException.ThrowIfNull(task);
 
-        await using var conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var cmd = conn.CreateCommand();
+        await using SqliteConnection conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteCommand cmd = conn.CreateCommand();
 
         cmd.CommandText = """
             UPDATE DownloadTasks SET
@@ -152,12 +152,12 @@ public sealed class CacheService : ICacheService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<DownloadTask>> GetAllTasksAsync(CancellationToken cancellationToken = default)
     {
-        await using var conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var cmd = conn.CreateCommand();
+        await using SqliteConnection conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT * FROM DownloadTasks ORDER BY CreatedAt DESC;";
 
         var tasks = new List<DownloadTask>();
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteDataReader reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             tasks.Add(MapToTask(reader));
 
@@ -169,12 +169,12 @@ public sealed class CacheService : ICacheService
     {
         ArgumentNullException.ThrowIfNull(sha256);
 
-        await using var conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var cmd = conn.CreateCommand();
+        await using SqliteConnection conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT * FROM DownloadTasks WHERE Sha256 = @sha256;";
         cmd.Parameters.AddWithValue("@sha256", sha256);
 
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteDataReader reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         return await reader.ReadAsync(cancellationToken).ConfigureAwait(false)
             ? MapToTask(reader)
             : null;
@@ -185,8 +185,8 @@ public sealed class CacheService : ICacheService
     {
         ArgumentNullException.ThrowIfNull(sha256);
 
-        await using var conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var cmd = conn.CreateCommand();
+        await using SqliteConnection conn = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using SqliteCommand cmd = conn.CreateCommand();
         cmd.CommandText = "DELETE FROM DownloadTasks WHERE Sha256 = @sha256;";
         cmd.Parameters.AddWithValue("@sha256", sha256);
         await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -216,9 +216,9 @@ public sealed class CacheService : ICacheService
     /// <summary>Maps a reader row to a <see cref="DownloadTask"/>.</summary>
     private static DownloadTask MapToTask(SqliteDataReader reader)
     {
-        var downloadedBytes = reader.GetInt64(reader.GetOrdinal("DownloadedBytes"));
+        long downloadedBytes = reader.GetInt64(reader.GetOrdinal("DownloadedBytes"));
         var state = (TaskState)reader.GetInt32(reader.GetOrdinal("State"));
-        var fileGroup = JsonSerializer.Deserialize<RawFileGroup>(
+        RawFileGroup fileGroup = JsonSerializer.Deserialize<RawFileGroup>(
             reader.GetString(reader.GetOrdinal("RawFileGroup")))
             ?? throw new JsonException("RawFileGroup payload is empty.");
 

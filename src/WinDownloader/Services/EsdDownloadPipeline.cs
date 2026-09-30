@@ -29,7 +29,7 @@ public sealed class EsdDownloadPipeline : IEsdDownloadPipeline
         ArgumentNullException.ThrowIfNull(task);
         ArgumentNullException.ThrowIfNull(progress);
 
-        var esdPath = _pathService.ResolveEsdPath(task);
+        string esdPath = _pathService.ResolveEsdPath(task);
         Directory.CreateDirectory(Path.GetDirectoryName(esdPath)!);
 
         await _downloadService.DownloadAsync(
@@ -43,8 +43,8 @@ public sealed class EsdDownloadPipeline : IEsdDownloadPipeline
     {
         ArgumentNullException.ThrowIfNull(task);
 
-        var esdPath = _pathService.ResolveEsdPath(task);
-        var actualHash = await ComputeSha256Async(esdPath, cancellationToken).ConfigureAwait(false);
+        string esdPath = _pathService.ResolveEsdPath(task);
+        string actualHash = await ComputeSha256Async(esdPath, cancellationToken).ConfigureAwait(false);
         if (!string.Equals(actualHash, task.Sha256, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException($"SHA-256 not match. Expected: {task.Sha256}  Actual: {actualHash}");
@@ -61,7 +61,7 @@ public sealed class EsdDownloadPipeline : IEsdDownloadPipeline
             bufferSize: 1024 * 1024,
             useAsync: true);
 
-        var hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
+        byte[] hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
         return Convert.ToHexStringLower(hash);
     }
 }

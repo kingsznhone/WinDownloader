@@ -1,7 +1,5 @@
 # WindowsImageDownloader
 
-
-
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![WinUI 3](https://img.shields.io/badge/WinUI-3-0078D4)](https://docs.microsoft.com/en-us/windows/apps/winui/winui3/)
@@ -13,11 +11,9 @@
 
 > **中文版说明请见 [README_ZH.md](README_ZH.md)**
 
-
-
 A Windows installation image downloader built with **WinUI 3** and **.NET 10**. It fetches product catalogs from the **Microsoft Update Catalog**, filters ESD files, downloads them with multi-threaded resumable support, verifies SHA-256 checksums, persists tasks via SQLite, and optionally converts downloaded ESD files to bootable ISO images.
 
-> 💡 **Note:** This project is a **playground** — large portions of its codebase have been generated and iterated with the help of **AI coding agents**. Expect experimental patterns, occasional over-engineering, and liberal use of agent-generated code. Contributions and cleanups are welcome!
+> Experimental project developed with AI coding agents; review and test changes before relying on them.
 
 ---
 
@@ -32,7 +28,6 @@ A Windows installation image downloader built with **WinUI 3** and **.NET 10**. 
   - Reuses official solid LZMS compression for `sources\install.wim`
   - Creates the final ISO using the bundled **oscdimg** tool (`WinDownloader.Iso`)
 - **🌐 Localization** — Supports **en-US** and **zh-CN** with MRT Core resources. Language switching takes effect after restart.
-- **🎨 Modern WinUI 3 UI** — Built with Windows App SDK 2.0, featuring navigation view, settings page, and real-time download progress.
 
 ---
 
@@ -50,8 +45,6 @@ A Windows installation image downloader built with **WinUI 3** and **.NET 10**. 
 
 ### Runtime Environment (Using a Published Build)
 
-For users running a published build, the requirements are:
-
 - **Windows 11 x64** (build 26100 or later)
 - An internet connection to retrieve the Microsoft Update Catalog and download ESD files
 - Sufficient free disk space for the downloaded ESD files and generated ISO images
@@ -59,8 +52,6 @@ For users running a published build, the requirements are:
 The published application uses Windows App SDK self-contained deployment. End users do **not** need to install the .NET 10 SDK or Visual Studio. Copy the complete publish directory to the target machine and start `WinDownloader.exe`.
 
 ### Development Environment
-
-Set up the following environment to build or modify the project:
 
 - **Windows 11 x64** (build 26100 or later)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
@@ -118,36 +109,9 @@ src/
 
 ---
 
-## 🧱 Architecture Overview
-
-| Layer           | Technology                                                 |
-| --------------- | ---------------------------------------------------------- |
-| UI Framework    | WinUI 3 (`Microsoft.UI.Xaml`)                              |
-| Runtime         | .NET 10 + Windows App SDK 2.0                              |
-| MVVM            | CommunityToolkit.Mvvm                                      |
-| DI / Lifecycle  | Microsoft.Extensions.Hosting + DI                          |
-| Download Engine | [Downloader](https://github.com/bezzad/Downloader) NuGet   |
-| WIM Processing  | [ManagedWimLib](https://github.com/kingseva/ManagedWimLib) |
-| ISO Creation    | Bundled `oscdimg.exe`                                      |
-| Database        | Microsoft.Data.Sqlite                                      |
-| Settings        | JSON file                                                  |
-
-### Data Flow
-
-```
-Selection Page
-  → Fetch catalog from Microsoft Update Catalog
-  → Parse products.xml → RawFile list
-  → User selects & queues downloads
-  → DownloadTaskOrchestratorService schedules tasks
-  → EsdDownloadPipeline downloads + SHA-256 verifies
-  → SQLite persists task state
-  → (Optional) EsdToIsoConversionService converts ESD → ISO
-```
-
----
-
 ## 📚 Documentation
+
+Start with [AGENTS.md](AGENTS.md) for coding constraints or [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system overview.
 
 | Document                                                   | Description                                       |
 | ---------------------------------------------------------- | ------------------------------------------------- |
@@ -170,27 +134,17 @@ Selection Page
 
 ## 🧪 Proof-of-Concept (POC)
 
-The `src/POC` directory contains a console application that directly references `WinDownloader.Wim` and `WinDownloader.Iso`. It serves as a validation and experimentation host for:
-
-- Testing WIM/ISO conversion logic independently
-- Experimenting with progress mapping and compression parameters
-- Validating oscdimg behavior
+The console host tests WIM/ISO conversion, compression and progress without WinUI. Options and output paths are documented in [src/POC/README.md](src/POC/README.md).
 
 ```powershell
-dotnet run --project .\src\POC\POC.csproj
+dotnet run --project .\src\POC\POC.csproj -- --help
 ```
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [contributing guidelines](docs/WORKFLOW.md) first.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Follow [docs/WORKFLOW.md](docs/WORKFLOW.md), keep changes scoped, and include verification results and matching documentation in your pull request.
 
 ---
 

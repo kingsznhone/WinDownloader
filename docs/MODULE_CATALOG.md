@@ -39,21 +39,21 @@ GetCatalogAsync(forceRefresh)
   → ExtractProductsXmlAsync
       调用 expand.exe 解压 products.xml
   → ParseProductsXml
-      XDocument 解析为 IReadOnlyList<RawFile>
+            XDocument 解析为 RawFile 列表
 ```
+
+目录搜索请求当前使用以下硬编码参数：
+
+| 参数 | 值 |
+|------|------|
+| `Products` | `PN=Windows.Products.Cab.amd64&V=26300.0.0.0` |
+| `DeviceAttributes` | `DUScan=1;OSVersion=10.0.026300.1` |
+
+查询基线为 build 26300、amd64；UI 的架构筛选不改变请求参数。
 
 ## RawFile 字段来源
 
-| 字段 | 来源 |
-|------|------|
-| `LanguageCode` / `Language` | XML 语言字段 |
-| `Architecture` | XML 架构字段 |
-| `EditionLoc` / `Edition` | XML edition 字段 |
-| `FileName` | ESD 文件名 |
-| `FilePath` | ESD 下载 URL |
-| `Sha256` | ESD SHA-256 |
-| `Size` | ESD 文件大小 |
-| `IsRetailOnly` | 零售限制标记 |
+从 XML 的 `File` 元素读取语言、架构、版本、文件名、URL、SHA-256、大小及零售标记；字段含义见 [数据模型](MODULE_MODELS.md#rawfile)。
 
 ## 缓存
 
@@ -63,14 +63,9 @@ GetCatalogAsync(forceRefresh)
 %LocalAppData%\WindowsImageDownloader\catalog_cache\
 ```
 
-缓存内容：
-
-- `products.cab`
-- `products.xml`
-- 下载中的 `.download` 临时文件
+缓存包含 `products.cab`、`products.xml` 和下载中的 `.download` 临时文件。
 
 ## 注意事项
 
 - `expand.exe` 是 Windows 系统组件，缺失时无法解压 CAB。
-- 当前 `Products` 和 `DeviceAttributes` 参数仍硬编码为 Windows 11 24H2 amd64，未来如要支持版本/架构选择，需要动态构造请求体。
 - `forceRefresh = true` 会重新请求并刷新本地缓存。

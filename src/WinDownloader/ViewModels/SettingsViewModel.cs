@@ -1,29 +1,22 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WinDownloader.Interfaces;
+using Windows.Storage;
 
 namespace WinDownloader.ViewModels;
 
-public sealed partial class SettingsViewModel : ObservableObject
+public sealed partial class SettingsViewModel(IAppSettings settings) : ObservableObject
 {
-    private readonly IAppSettings _settings;
-
-    public SettingsViewModel(IAppSettings settings)
-    {
-        _settings = settings;
-
-        DownloadDirectory = settings.DownloadDirectory!;
-        DownloadChunkCount = settings.DownloadChunkCount;
-        DownloadParallelCount = settings.DownloadParallelCount;
-        MaxConcurrentDownloads = settings.MaxConcurrentDownloads;
-        SelectedLanguageIndex = LanguageTagToIndex(settings.AppLanguage);
-    }
+    private readonly IAppSettings _settings = settings;
 
     // ── Download directory ───────────────────────────────────────────────────
 
     [ObservableProperty]
-    public partial string DownloadDirectory { get; set; }
+    public partial string DownloadDirectory { get; set; } = settings.DownloadDirectory!;
 
     partial void OnDownloadDirectoryChanged(string value)
         => _settings.DownloadDirectory = string.IsNullOrWhiteSpace(value) ? null : value;
@@ -31,23 +24,27 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task BrowseDownloadDirectoryAsync()
     {
-        var picker = new Windows.Storage.Pickers.FolderPicker();
-        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads;
+        var picker = new Windows.Storage.Pickers.FolderPicker
+        {
+            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads
+        };
         picker.FileTypeFilter.Add("*");
 
         // Required for WinAppSDK unpackaged: associate picker with the window HWND
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+        nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
 
-        var folder = await picker.PickSingleFolderAsync();
+        StorageFolder? folder = await picker.PickSingleFolderAsync();
         if (folder is not null)
+        {
             DownloadDirectory = folder.Path;
+        }
     }
 
     // ── Download chunk count (1–128) ──────────────────────────────────────────
 
     [ObservableProperty]
-    public partial int DownloadChunkCount { get; set; }
+    public partial int DownloadChunkCount { get; set; } = settings.DownloadChunkCount;
 
     partial void OnDownloadChunkCountChanged(int value)
         => _settings.DownloadChunkCount = value;
@@ -55,7 +52,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     // ── Download parallel count (1–16) ──────────────────────────────────────
 
     [ObservableProperty]
-    public partial int DownloadParallelCount { get; set; }
+    public partial int DownloadParallelCount { get; set; } = settings.DownloadParallelCount;
 
     partial void OnDownloadParallelCountChanged(int value)
         => _settings.DownloadParallelCount = value;
@@ -63,7 +60,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     // ── Max concurrent downloads (1–16) ─────────────────────────────────────
 
     [ObservableProperty]
-    public partial int MaxConcurrentDownloads { get; set; }
+    public partial int MaxConcurrentDownloads { get; set; } = settings.MaxConcurrentDownloads;
 
     partial void OnMaxConcurrentDownloadsChanged(int value)
         => _settings.MaxConcurrentDownloads = value;
@@ -71,7 +68,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     // ── Language ─────────────────────────────────────────────────────────────
 
     [ObservableProperty]
-    public partial int SelectedLanguageIndex { get; set; }
+    public partial int SelectedLanguageIndex { get; set; } = LanguageTagToIndex(settings.AppLanguage);
 
     /// <summary>Language tags ordered to match ComboBox items (index 0 = Auto).</summary>
     private static readonly string?[] _languageTags = [null, "en-US", "zh-CN"];
@@ -92,9 +89,14 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private static int LanguageTagToIndex(string? tag)
     {
-        for (var i = 0; i < _languageTags.Length; i++)
+        for (int i = 0; i < _languageTags.Length; i++)
+        {
             if (string.Equals(_languageTags[i], tag, StringComparison.OrdinalIgnoreCase))
+            {
                 return i;
+            }
+        }
+
         return 0; // Auto
     }
 
@@ -103,9 +105,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private static void RestartApp()
     {
-        var executablePath = Environment.ProcessPath;
+        string? executablePath = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(executablePath))
+        {
             return;
+        }
 
         try
         {

@@ -1,5 +1,5 @@
-using WinDownloader.Iso;
-using WinDownloader.Wim;
+using WinDownloader.Iso.Models;
+using WinDownloader.Wim.Models;
 
 namespace WinDownloader.Models;
 

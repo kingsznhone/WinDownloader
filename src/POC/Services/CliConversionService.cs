@@ -2,23 +2,19 @@ using ManagedWimLib;
 using POC.Models;
 using WinDownloader.Iso;
 using WinDownloader.Iso.Interfaces;
-using WinDownloader.Wim;
+using WinDownloader.Iso.Models;
+using WinDownloader.Wim.Interfaces;
+using WinDownloader.Wim.Models;
 
 namespace POC.Services;
 
-public sealed class CliConversionService
+public sealed class CliConversionService(IWimProcessingService wimService, IIsoCreationService isoService)
 {
     private const uint BootChunkSize = 32 * 1024;
     private const uint InstallWimChunkSize = 128 * 1024;
 
-    private readonly IWimProcessingService _wimService;
-    private readonly IIsoCreationService _isoService;
-
-    public CliConversionService(IWimProcessingService wimService, IIsoCreationService isoService)
-    {
-        _wimService = wimService;
-        _isoService = isoService;
-    }
+    private readonly IWimProcessingService _wimService = wimService;
+    private readonly IIsoCreationService _isoService = isoService;
 
     public async Task<CliConversionResult> ConvertAsync(
         string esdPath,
@@ -40,11 +36,11 @@ public sealed class CliConversionService
         if (!recompressInstallImage && installCompression != CompressionType.LZMS)
             throw new ArgumentException("Fast install.wim export requires LZMS compression or force recompression.", nameof(installCompression));
 
-        var startedAt = DateTimeOffset.Now;
+        DateTimeOffset startedAt = DateTimeOffset.Now;
         var warnings = new List<string>();
-        var sourcesDir = Path.Combine(stagingDirectory, "sources");
-        var bootWimPath = Path.Combine(sourcesDir, "boot.wim");
-        var installWimPath = Path.Combine(sourcesDir, "install.wim");
+        string sourcesDir = Path.Combine(stagingDirectory, "sources");
+        string bootWimPath = Path.Combine(sourcesDir, "boot.wim");
+        string installWimPath = Path.Combine(sourcesDir, "install.wim");
 
         try
         {
@@ -56,7 +52,7 @@ public sealed class CliConversionService
 
             // InspectingSource
             Report(progress, 0.03, "InspectingSource", "正在读取 ESD 映像信息");
-            var images = await _wimService.GetImagesAsync(esdPath, cancellationToken).ConfigureAwait(false);
+            IReadOnlyList<WimImageInfo> images = await _wimService.GetImagesAsync(esdPath, cancellationToken).ConfigureAwait(false);
             ValidateImages(images);
 
             // ApplyingSetupMedia
@@ -72,8 +68,8 @@ public sealed class CliConversionService
                 .Where(static i => i.Index is 2 or 3)
                 .Select(static i =>
                 {
-                    var name = !string.IsNullOrWhiteSpace(i.Name) ? i.Name : i.Title;
-                    var desc = !string.IsNullOrWhiteSpace(i.Description) ? i.Description : i.Title;
+                    string name = !string.IsNullOrWhiteSpace(i.Name) ? i.Name : i.Title;
+                    string desc = !string.IsNullOrWhiteSpace(i.Description) ? i.Description : i.Title;
                     return new WimImageExportItem(i.Index, name, desc, i.Index == 3 ? ExportFlags.Boot : ExportFlags.None);
                 })
                 .ToList();
@@ -89,8 +85,8 @@ public sealed class CliConversionService
                 .Where(static i => i.Index >= 4)
                 .Select(static i =>
                 {
-                    var name = !string.IsNullOrWhiteSpace(i.Name) ? i.Name : i.Title;
-                    var desc = !string.IsNullOrWhiteSpace(i.Description) ? i.Description : i.Title;
+                    string name = !string.IsNullOrWhiteSpace(i.Name) ? i.Name : i.Title;
+                    string desc = !string.IsNullOrWhiteSpace(i.Description) ? i.Description : i.Title;
                     return new WimImageExportItem(i.Index, name, desc, ExportFlags.None);
                 })
                 .ToList();
@@ -104,7 +100,7 @@ public sealed class CliConversionService
 
             // CreatingIso
             Report(progress, 0.86, "CreatingIso", "正在调用 oscdimg 创建 ISO");
-            var isoResult = await _isoService.CreateIsoAsync(
+            IsoCreationResult isoResult = await _isoService.CreateIsoAsync(
                 new IsoCreationRequest(stagingDirectory, isoPath, volumeLabel)
                 {
                     OnProgress = p => Report(progress,
@@ -148,8 +144,8 @@ public sealed class CliConversionService
 
     private static string FormatWim(string prefix, WimOperationProgress p)
     {
-        var pct = p.Percent.HasValue ? $" {p.Percent.Value:0.0}%" : string.Empty;
-        var item = !string.IsNullOrWhiteSpace(p.CurrentItem) ? $" ({Path.GetFileName(p.CurrentItem)})" : string.Empty;
+        string pct = p.Percent.HasValue ? $" {p.Percent.Value:0.0}%" : string.Empty;
+        string item = !string.IsNullOrWhiteSpace(p.CurrentItem) ? $" ({Path.GetFileName(p.CurrentItem)})" : string.Empty;
         return $"{prefix} [{p.Stage}]{pct}{item}";
     }
 
@@ -157,7 +153,7 @@ public sealed class CliConversionService
     {
         if (images.Count < 4)
             throw new InvalidOperationException("ESD must contain at least image 1, 2, 3, and one install image.");
-        foreach (var idx in new[] { 1, 2, 3, 4 })
+        foreach (int idx in new[] { 1, 2, 3, 4 })
             if (images.All(i => i.Index != idx))
                 throw new InvalidOperationException($"ESD is missing required image index {idx}.");
     }
